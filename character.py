@@ -162,28 +162,28 @@ class Character():
         for jobclass in self.job_classes:
             name, level = jobclass
             job = job_classes.job_list(name, level)
-            self.hp += job.hp
-            self.mp += job.mp
+            self.hp += job.hp*level
+            self.mp += job.mp*level
             self.level += level
-            self.phyatk += job.phyatk
-            self.phydef += job.phydef
-            self.agility += job.agility
-            self.finess += job.finess
-            self.magatk += job.magatk
-            self.magdef += job.magdef
-            self.resistance += job.resistance
-            self.special += job.special
-            self.athletics += job.athletics
-            self.acrobatics += job.acrobatics
-            self.stealth += job.stealth
-            self.sleight += job.sleight
-            self.investigation += job.investigation
-            self.insight += job.insight
-            self.perception += job.perception
-            self.deception += job.deception
-            self.intimidation += job.intimidation
-            self.persuasion += job.persuasion
-            self.performance += job.performance
+            self.phyatk += job.phyatk*level
+            self.phydef += job.phydef*level
+            self.agility += job.agility*level
+            self.finess += job.finess*level
+            self.magatk += job.magatk*level
+            self.magdef += job.magdef*level
+            self.resistance += job.resistance*level
+            self.special += job.special*level
+            self.athletics += job.athletics*level
+            self.acrobatics += job.acrobatics*level
+            self.stealth += job.stealth*level
+            self.sleight += job.sleight*level
+            self.investigation += job.investigation*level
+            self.insight += job.insight*level
+            self.perception += job.perception*level
+            self.deception += job.deception*level
+            self.intimidation += job.intimidation*level
+            self.persuasion += job.persuasion*level
+            self.performance += job.performance*level
 
             self.armor_classes.append(job.armor_class)
         self.armor_class_check()
@@ -194,28 +194,28 @@ class Character():
         for raceclass in self.racial_classes:
             name, level = raceclass
             race = racial_classes.race_list(name, level)
-            self.hp += race.hp
-            self.mp += race.mp
+            self.hp += race.hp*level
+            self.mp += race.mp*level
             self.level += level
-            self.phyatk += race.phyatk
-            self.phydef += race.phydef
-            self.agility += race.agility
-            self.finess += race.finess
-            self.magatk += race.magatk
-            self.magdef += race.magdef
-            self.resistance += race.resistance
-            self.special += race.special
-            self.athletics += race.athletics
-            self.acrobatics += race.acrobatics
-            self.stealth += race.stealth
-            self.sleight += race.sleight
-            self.investigation += race.investigation
-            self.insight += race.insight
-            self.perception += race.perception
-            self.deception += race.deception
-            self.intimidation += race.intimidation
-            self.persuasion += race.persuasion
-            self.performance += race.performance
+            self.phyatk += race.phyatk*level
+            self.phydef += race.phydef*level
+            self.agility += race.agility*level
+            self.finess += race.finess*level
+            self.magatk += race.magatk*level
+            self.magdef += race.magdef*level
+            self.resistance += race.resistance*level
+            self.special += race.special*level
+            self.athletics += race.athletics*level
+            self.acrobatics += race.acrobatics*level
+            self.stealth += race.stealth*level
+            self.sleight += race.sleight*level
+            self.investigation += race.investigation*level
+            self.insight += race.insight*level
+            self.perception += race.perception*level
+            self.deception += race.deception*level
+            self.intimidation += race.intimidation*level
+            self.persuasion += race.persuasion*level
+            self.performance += race.performance*level
 
             self.race_type_list.append(race.type)
     
