@@ -86,8 +86,6 @@ class Game():
         player.new_phyatk += round(effect.phyatk*bonus)
         player.new_phydef += round(effect.phydef*bonus)
         player.new_agility += round(effect.agility*bonus)
-        print(f"EFFECT AGILITY: {effect.agility}")
-        print(f"BONUS: {bonus}")
         player.new_finess += round(effect.finess*bonus)
         player.new_magatk += round(effect.magatk*bonus)
         player.new_magdef += round(effect.magdef*bonus)
@@ -217,6 +215,7 @@ class Game():
                     for stat_eff in player.status_effects:
                         print(f"{stat_eff.name} [{stat_eff.time_left}]")
                 while True:
+                    print("-------------------------")
                     choice = input("[G]od action, [A]ction, [N]ext\n").upper().strip()
                     if choice == "G":
                         self.god_action()
@@ -319,25 +318,8 @@ class Game():
                 self.effect = effect
                 
                 #  STATUS EFFECTS
+                print("-------------------------")
                 self.status_effect(spell, oppon)
-                """if not spell.statuses is None:
-                    for status_effect in spell.statuses:
-                        if not status_effect.is_active:
-                            continue
-                        if save_reduction == 0:
-                            continue
-                        if status_effect.ept:
-                            status_effect.effect *= round(effect)
-                        if extend == 1.5:
-                            status_effect.time *= extend
-                        for current_effect in oppon.status_effects:
-                            if current_effect.name == status_effect.name:
-                                print("DEBUGG: Replacing Status Effect")
-                                oppon.status_effects.remove(current_effect)
-                        oppon.status_effects.append(status_effect)
-                        self.status_apply(oppon, status_effect, effect)
-                        print(f"Player {oppon.id} has recieved {status_effect.name} for {status_effect.time} turns")"""
-                
                 if not spell.type == "Buff":
                     print(f"Dealt {round(effect)} damage to Player {oppon.id}")
                 print(f"Player {oppon.id} now has {oppon.new_hp}/{oppon.max_hp} HP")
@@ -390,25 +372,54 @@ class Game():
             if str(character) in self.assigned_players:
                 for player in self.player_objects:
                     if player.id == int(character):
-                        effect = input("Apply effect: ").lower()
-                        time = input("Time: ")
-                        extend = input("Is Extended? (Y/N): ").upper()
-                        extend = 1.5 if extend == "Y" else 1
-                        status_effect = ef.effect_list(effect, int(time), 1)
-                        if status_effect.ept:
-                            damage_effect = input("Damage Effect Multiplier: ")
-                            status_effect.effect *= int(damage_effect)
-                        else:
-                            damage_effect = 1
-                        if extend == 1.5:
-                            status_effect.time *= extend
-                        for current_effect in player.status_effects:
-                            if current_effect.name == status_effect.name:
-                                print("DEBUGG: Replacing Status Effect")
-                                player.status_effects.remove(current_effect)
-                        player.status_effects.append(status_effect)
-                        self.status_apply(player, status_effect, damage_effect)
-                        print(f"Player {player.id} has recieved {status_effect.name} for {status_effect.time} turns")
+                        choice = input("[A]dd, [E]dit: ").upper()
+                        if choice == "E":
+                            if not player.status_effects:
+                                print("No Status Effects applied")
+                                return
+                            for index, status in enumerate(player.status_effects):
+                                print(f"[{index+1}] {status.name} [{status.time_left}]")
+                            
+                            choice = input("Edit id: ").upper()
+                            if not choice.isdigit():
+                                print("ERROR: Not integer")
+                                return
+                            choice = int(choice)
+                            if 1 <= choice <= len(player.status_effects):
+                                status_effect = player.status_effects[choice-1]
+                                status_effect.edit()
+                                self.status_update(player)
+                            else:
+                                print("Choice out of bounce")
+                        elif choice == "A":
+                            effect = input("Apply effect: ").lower()
+                            time = input("Time: ")
+                            extend = input("Is Extended? (Y/N): ").upper()
+                            extend = 1.5 if extend == "Y" else 1
+                            use_effect = input("Use Effect: ").upper()
+                            if use_effect == "Y":
+                                use_effect = True
+                            else:
+                                use_effect = False
+                            status_effect = ef.effect_list(effect, int(time), 1, use_effect)
+                            if status_effect.ept:
+                                damage_effect = fs.is_int(input("Damage Effect Multiplier: "))
+                                status_effect.effect *= int(damage_effect)
+                            else:
+                                damage_effect = 1
+                            if extend == 1.5:
+                                status_effect.time *= extend
+                            if status_effect.is_effect:
+                                effect_multiplier = fs.is_int(input("Effect: "))
+                            else:
+                                effect_multiplier = 1
+                            for current_effect in player.status_effects:
+                                if current_effect.name == status_effect.name:
+                                    print("DEBUGG: Replacing Status Effect")
+                                    player.status_effects.remove(current_effect)
+                            player.status_effects.append(status_effect)
+                            self.status_apply(player, status_effect, effect_multiplier)
+                            print(f"Player {player.id} has recieved {status_effect.name} for {status_effect.time} turns")
         elif choice == "I":
             character = input("Character ID: ")
             if str(character) in self.assigned_players:
