@@ -11,6 +11,7 @@ class Character():
                  surname: str,
                  attribute: list[str] = None,
                  karma: int = 0,
+                 religion: str = None,
                  racial_classes: list[tuple[str, int]] = None,
                  job_classes: list[tuple[str, int]] = None,
                  power_level: int = 0,
@@ -43,6 +44,7 @@ class Character():
         self.racial_classes = racial_classes if racial_classes is not None else []
         self.power_level = power_level
         self.karma = karma
+        self.religion = religion
         self.level = 0
         self.hp = hp
         self.mp = mp
@@ -81,19 +83,25 @@ class Character():
         self.power_check()
 
     def __repr__(self) -> str:
-        """return (f"Character(name={self.firstname, self.surname}, attribute={self.attribute}, type={self.race_type}, level={self.level}, power_level={self.power_level}, armor_class={self.armor_class}, "
-                f"hp={self.hp}, mp={self.mp}, phyatk={self.phyatk}, phydef={self.phydef}, agility={self.agility}, "
-                f"finess={self.finess}, magatk={self.magatk}, magdef={self.magdef}, resistance={self.resistance}, "
-                f"special={self.special}, athletics={self.athletics}, acrobatics={self.acrobatics}, stealth={self.stealth}, "
-                f"sleight={self.sleight}, investigation={self.investigation}, insight={self.insight}, "
-                f"perception={self.perception}, deception={self.deception}, intimidation={self.intimidation}, "
-                f"persuasion={self.persuasion}, performance={self.performance})")"""
-        return (f"---------={self.firstname} {self.surname if self.surname is not None else ''}=---------\n"
-            f"Level: {self.level}\n"
-            f"Power Level: {self.power_level}\n"
-            f"Racial Classes: {', '.join([f'{race[0]} [{race[1]}]' for race in self.racial_classes])}\n"
-            f"Job Classes: {', '.join([f'{job[0]} [{job[1]}]' for job in self.job_classes])}\n"
-            f"Karma: {self.karma}")
+        return (
+        f"---------={self.firstname} {self.surname}=---------\n"
+        f"Power level: {self.power_level}\n"
+        f"Karma: {self.karma}\n"
+        f"Attributes: {self.attribute}\n"
+        f"Armor Class: {self.armor_class}\n"
+        "---------=Stats=---------\n"
+        f"HP:{self.hp}, MP:{self.mp}\n"
+        f"Agility:{self.agility}, Finess:{self.finess}\n"
+        f"PHY.ATK:{self.phyatk}, PHY.DEF:{self.phydef}\n"
+        f"MAG.ATK:{self.magatk}, MAG.DEF:{self.magdef}\n"
+        f"Resistance:{self.resistance}, Special:{self.special}\n"
+        "---------=Skills=---------\n"
+        f"ATH:{self.athletics}, ACRO:{self.acrobatics}\n"
+        f"STE:{self.stealth}, SOH:{self.sleight}\n"
+        f"INV:{self.investigation}, PER:{self.perception}\n"
+        f"DEC:{self.deception}, INTI:{self.intimidation}\n"
+        f"PERS:{self.persuasion}, PERF:{self.performance}\n"
+    )
 
     def id_check(self):
         if self.id not in id_list:
