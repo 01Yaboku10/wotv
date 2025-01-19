@@ -11,6 +11,10 @@ def create_savefolder(directory):
         else:
             print(f"ERROR: New directory {directory} could not be created.")
 
+def save_all(directory: str, players: list[object]):
+    for player in players:
+        save_character(directory, player)
+
 def save_character(directory: str, character: object):
     create_savefolder(directory)
     c = character
@@ -25,19 +29,22 @@ def save_character(directory: str, character: object):
     with open(file_path, "w", encoding="utf-8") as save:
         for line in lines:
             if f"ID:{c.id}" in line:
-                save.write(f"//ID:{c.id}//Firstname:{c.firstname}//Surname:{c.surname}//Attribute:{c.attribute}//Races:{c.racial_classes}//Jobs:{c.job_classes}//POWER:{c.power_level}//Karma:{c.karma}//HP:{c.hp}//MP:{c.mp}//PHY.ATK:{c.phyatk}//PHY.DEF:{c.phydef}//Agility:{c.agility}//Finess:{c.finess}//MAG.ATK:{c.magatk}//MAG.DEF:{c.magdef}//Resistance:{c.resistance}//Special:{c.special}//Athletics:{c.athletics}//Acrobatics:{c.acrobatics}//Stealth:{c.stealth}//Sleight:{c.sleight}//Investigation:{c.investigation}//Insight:{c.insight}//Perception:{c.perception}//Deception:{c.deception}//Intimidation:{c.intimidation}//Persuasion:{c.persuasion}//Performance:{c.performance}\n")
+                save.write(f"//ID:{c.id}//Firstname:{c.firstname}//Surname:{c.surname}//Attribute:{c.attribute}//Races:{c.racial_classes}//Jobs:{c.job_classes}//Power:{c.power_level}//Karma:{c.karma}//Religion:{c.religion}//HP:{c.hp}//MP:{c.mp}//PHY.ATK:{c.phyatk}//PHY.DEF:{c.phydef}//Agility:{c.agility}//Finess:{c.finess}//MAG.ATK:{c.magatk}//MAG.DEF:{c.magdef}//Resistance:{c.resistance}//Special:{c.special}//Athletics:{c.athletics}//Acrobatics:{c.acrobatics}//Stealth:{c.stealth}//Sleight:{c.sleight}//Investigation:{c.investigation}//Insight:{c.insight}//Perception:{c.perception}//Deception:{c.deception}//Intimidation:{c.intimidation}//Persuasion:{c.persuasion}//Performance:{c.performance}\n")
                 print("DEBUGG: Character Updated")
                 character_found = True
             else:
                 save.write(line)
         if not character_found:
-            save.write(f"//ID:{c.id}//Firstname:{c.firstname}//Surname:{c.surname}//Attribute:{c.attribute}//Races:{c.racial_classes}//Jobs:{c.job_classes}//POWER:{c.power_level}//Karma:{c.karma}//HP:{c.hp}//MP:{c.mp}//PHY.ATK:{c.phyatk}//PHY.DEF:{c.phydef}//Agility:{c.agility}//Finess:{c.finess}//MAG.ATK:{c.magatk}//MAG.DEF:{c.magdef}//Resistance:{c.resistance}//Special:{c.special}//Athletics:{c.athletics}//Acrobatics:{c.acrobatics}//Stealth:{c.stealth}//Sleight:{c.sleight}//Investigation:{c.investigation}//Insight:{c.insight}//Perception:{c.perception}//Deception:{c.deception}//Intimidation:{c.intimidation}//Persuasion:{c.persuasion}//Performance:{c.performance}\n")
+            save.write(f"//ID:{c.id}//Firstname:{c.firstname}//Surname:{c.surname}//Attribute:{c.attribute}//Races:{c.racial_classes}//Jobs:{c.job_classes}//Power:{c.power_level}//Karma:{c.karma}//Religion:{c.religion}//HP:{c.hp}//MP:{c.mp}//PHY.ATK:{c.phyatk}//PHY.DEF:{c.phydef}//Agility:{c.agility}//Finess:{c.finess}//MAG.ATK:{c.magatk}//MAG.DEF:{c.magdef}//Resistance:{c.resistance}//Special:{c.special}//Athletics:{c.athletics}//Acrobatics:{c.acrobatics}//Stealth:{c.stealth}//Sleight:{c.sleight}//Investigation:{c.investigation}//Insight:{c.insight}//Perception:{c.perception}//Deception:{c.deception}//Intimidation:{c.intimidation}//Persuasion:{c.persuasion}//Performance:{c.performance}\n")
     print(f"DEBUGG: Character {c.id} saved to {directory}.")
 
 def load_characters(directory: str):
+    create_savefolder(directory)
     character_id = "characters.txt"
     file_path = os.path.join(directory, character_id)
-
+    if not os.path.exists(file_path):
+        with open(file_path, "w", encoding="utf-8") as file:
+            pass
     # Define a mapping of keys to the corresponding variable names for the Character class
     attribute_map = {
         "ID": "id",
@@ -46,8 +53,9 @@ def load_characters(directory: str):
         "Attribute": "attribute",
         "Races": "racial_classes",
         "Jobs": "job_classes",
-        "POWER": "power_level",
+        "Power": "power_level",
         "Karma": "karma",
+        "Religion": "religion",
         "HP": "hp",
         "MP": "mp",
         "PHY.ATK": "phyatk",
@@ -80,6 +88,7 @@ def load_characters(directory: str):
                 'job_classes': [],
                 'power_level': 0,
                 'karma': 0,
+                'religion': None,
                 'hp': 0,
                 'mp': 0,
                 'phyatk': 0,
@@ -133,6 +142,7 @@ def load_characters(directory: str):
                 job_classes=character_data['job_classes'],
                 power_level=character_data['power_level'],
                 karma=character_data['karma'],
+                religion=character_data['religion'],
                 hp=character_data['hp'],
                 mp=character_data['mp'],
                 phyatk=character_data['phyatk'],
