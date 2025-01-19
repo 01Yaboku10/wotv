@@ -1,3 +1,5 @@
+import failsafe as fs
+
 class Effect():
     def __init__(self,
                  name: str,
@@ -64,6 +66,18 @@ class Effect():
         self.persuasion = persuasion
         self.performance = performance
         self.karma = karma
+    
+    def edit(self):
+        choice = input("Edit [T]ime, [E]ffect").upper()
+        if choice == "E":
+            print(f"Current Spell Effect: {self.spell_effect}")
+            value = fs.is_int(input("New Effect: "))
+            self.spell_effect = value
+        elif choice == "T":
+            print(f"Current Time: {self.time_left}/{self.time}")
+            value = fs.is_int(input("New Time: "))
+            self.time = value
+            self.time_left = value
 
 def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False):
     effects_list = {
