@@ -13,15 +13,17 @@ class Game():
         name = input("Name of Scenario: ").lower()
         self.scenario = Scenario(name)
         self.assigned_players, self.player_objects = gl.player_assign()
-        self.team_1, self.team_2 = gl.team_assign(self.player_objects)
+        gl.team_assign(self.player_objects)
         print("---------=Teams=---------")
         print("Team 1:", end="")
-        for player in self.team_1:
-            print(f" ID:{player.id} {player.firstname}", end="")
+        for player in self.player_objects:
+            if player.team == 1:
+                print(f" ID:{player.id} {player.firstname}", end="")
         print(".")
         print("Team 2:", end="")
-        for player in self.team_2:
-            print(f" ID:{player.id} {player.firstname}", end="")
+        for player in self.player_objects:
+            if player.team == 2:
+                print(f" ID:{player.id} {player.firstname}", end="")
         print(".")
         self.game()
 
@@ -81,6 +83,10 @@ class Game():
             effect.spell_effect=spell_effect
         bonus = spell_effect if effect.is_effect else 1
         bonus = abs(bonus)
+        if effect.use_religion is not None:
+            print("DEBUGG: USING RELIGION")
+            if effect.use_religion != player.religion:
+                bonus = -bonus
         player.new_hp += round(effect.hp*bonus)
         player.new_mp += round(effect.mp*bonus)
         player.new_phyatk += round(effect.phyatk*bonus)
@@ -324,7 +330,17 @@ class Game():
                     print(f"Dealt {round(effect)} damage to Player {oppon.id}")
                 print(f"Player {oppon.id} now has {oppon.new_hp}/{oppon.max_hp} HP")
             player.new_mp -= mp_cost
+            if spell.target == "AOE" and spell.karma != 0:
+                for opponent in opponent_list:
+                    if opponent.religion == player.religion:
+                        player.new_karma -= spell.karma
+                    else:
+                        player.new_karma += spell.karma
+            else:
+                player.new_karma += spell.karma
             print(f"Player {player.id} used {mp_cost} MP, and now has {player.new_mp}/{player.max_mp} MP")
+            if spell.karma != 0:
+                print(f"Player {player.id} used {spell.karma} Karma, and now has {player.new_karma} Karma")
             
             opponent_list.clear()
             spell_enchantments.clear()
@@ -427,6 +443,7 @@ class Game():
                     if player.id == int(character):
                         print(f"---------={player.firstname} {player.surname}=---------")
                         print(f"Power level: {player.new_power_level}/{player.power_level}")
+                        print(f"Karma: {player.new_karma}/{player.karma}")
                         print("---------=Effects=---------")
                         for current_effect in player.status_effects:
                             print(f"{current_effect.name} [{current_effect.time_left}]")
