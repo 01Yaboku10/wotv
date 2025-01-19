@@ -13,8 +13,6 @@ def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
     print("---------=Assign Teams=---------")
     for index, character in enumerate(players):
             print(f"[{index+1}] ID:{character.id} {character.firstname}")
-    team_1 = []
-    team_2 = []
     print("--=Assign players for Team 1=--")
     while True:
         choice = input("Assign id ([D]one): ").upper()
@@ -26,10 +24,7 @@ def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
         choice = int(choice)
         if 1 <= choice <= len(players):
             player = players[choice-1]
-            if player in team_1:
-                print("ERROR: Player already registered")
-                continue
-            team_1.append(player)
+            player.team = 1
     print("--=Assign players for Team 2=--")
     while True:
         choice = input("Assign id ([D]one): ").upper()
@@ -41,11 +36,7 @@ def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
         choice = int(choice)
         if 1 <= choice <= len(players):
             player = players[choice-1]
-            if player in team_1 or player in team_2:
-                print("ERROR: Player already registered")
-                continue
-            team_2.append(player)
-    return team_1, team_2
+            player.team = 2
 
 def player_assign() -> tuple[list[int], list[object]]:
     print("---------=Assign Players=---------")
