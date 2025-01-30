@@ -7,6 +7,7 @@ class Job():
                  armor_class: str = "None",
                  hp: int = 0,
                  mp: int = 0,
+                 sp: int = 0,
                  phyatk: int = 0,
                  phydef: int = 0,
                  agility: int = 0,
@@ -33,6 +34,7 @@ class Job():
         self.armor_class = armor_class
         self.hp = hp
         self.mp = mp
+        self.sp = sp
         self.phyatk = phyatk
         self.phydef = phydef
         self.agility = agility
@@ -67,10 +69,10 @@ def job_list(job_name, level):
         "wizard": Job("Wizard", "magic", level, 25, "light", mp=1, magatk=1, magdef=1, investigation=1),
         "greater_wizard": Job("Greater Wizard", "magic", level, 50, "light", mp=1, magatk=1, magdef=1, investigation=1),
         "master_wizard": Job("Master Wizard", "magic", level, 125, "light", mp=1, magatk=1, magdef=1, investigation=1),
-        "knight": Job("Knight", "Warrior", level, 25, "medium", phydef=1, phyatk=1, agility=1, athletics=1, perception=1),
-        "greater_knight": Job("Greater Knight", "warrior", level, 50, "medium", phydef=1, phyatk=1, agility=1, athletics=1, perception=1),
-        "master_knight": Job("Master Knight", "warrior", level, 125, "medium", phydef=1, phyatk=1, agility=1, athletics=1, perception=1),
-        "tank": Job("Tank", "Warrior", level, 40, "heavy", phydef=1, phyatk=1, athletics=1, perception=1),
+        "knight": Job("Knight", "Warrior", level, 25, "medium", sp= 1, phydef=1, phyatk=1, agility=1, athletics=1, perception=1),
+        "greater_knight": Job("Greater Knight", "warrior", level, 50, "medium", phydef=1, sp= 1, phyatk=1, agility=1, athletics=1, perception=1),
+        "master_knight": Job("Master Knight", "warrior", level, 125, "medium", phydef=1, sp= 1, phyatk=1, agility=1, athletics=1, perception=1),
+        "tank": Job("Tank", "Warrior", level, 40, "heavy", phydef=1, sp= 1, phyatk=1, athletics=1, perception=1),
         "elemental_mage": Job("Elemental Mage", "magic", level, 30, mp=3, magatk=1, magdef=1, investigation=1)
     }
     job_class = job_class_list[job_name]

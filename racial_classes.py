@@ -3,11 +3,11 @@ class Race():
                  name: str,
                  type: str,
                  level: int,
-                 max_level: int,
                  armor_class: str = "No",
                  power_level: int = 0,
                  hp: int = 0,
                  mp: int = 0,
+                 sp: int = 0,
                  phyatk: int = 0,
                  phydef: int = 0,
                  agility: int = 0,
@@ -30,11 +30,11 @@ class Race():
         self.name = name
         self.type = type
         self.level = level
-        self.max_level = max_level
         self.armor_class = armor_class
         self.power_level = power_level
         self.hp = hp * level
         self.mp = mp * level
+        self.sp = sp * level
         self.phyatk = phyatk * level
         self.phydef = phydef * level
         self.agility = agility * level
@@ -66,10 +66,10 @@ class Race():
 
 def race_list(race_name, level):
     racial_class_list = {
-        "human": Race("Human", "humanoid", 1, 1, power_level=50, hp=30, mp=30, phyatk=20, phydef=20, agility=20, finess=50, magatk=15, magdef=15, resistance=5, special=1, athletics=1, acrobatics=2, sleight=1, investigation=1, persuasion=1),
-        "four_eye": Race("Four Eye", "humanoid", 1, 1, power_level=40, hp=25, mp=10, phyatk=30, phydef=25, agility=35, finess=40, magatk=10, magdef=10, resistance=10, special=5, athletics=2, acrobatics=2, investigation=2, insight=2, perception=3, intimidation=1, persuasion=1),
-        "dwarf": Race("Dwarf", "humanoid", 1, 1, power_level=50, hp=40, mp=10, phyatk=30, phydef=25, agility=25, finess=65, magatk=5, magdef=20, resistance=10, special=1, athletics=1, stealth=1, sleight=1, investigation=1, insight=1, persuasion=1),
-        "rainbow_eye": Race("Rainbow Eye", "humanoid", 1, 1, power_level=40, hp=40, mp=50, phyatk=5, phydef=15, agility=20, finess=30, magatk=25, magdef=20, resistance=10, special=5, acrobatics=1, investigation=2, insight=2, perception=2, deception=1, persuasion=2, performance=3),
+        "human": Race("Human", "humanoid", 1, power_level=50, hp=30, mp=30, sp=40, phyatk=20, phydef=20, agility=20, finess=50, magatk=15, magdef=15, resistance=5, special=1, athletics=1, acrobatics=2, sleight=1, investigation=1, persuasion=1),
+        "four_eye": Race("Four Eye", "humanoid", 1, power_level=40, hp=25, sp=30, mp=10, phyatk=30, phydef=25, agility=35, finess=40, magatk=10, magdef=10, resistance=10, special=5, athletics=2, acrobatics=2, investigation=2, insight=2, perception=3, intimidation=1, persuasion=1),
+        "dwarf": Race("Dwarf", "humanoid", 1, power_level=50, hp=40, mp=10, sp=30, phyatk=30, phydef=25, agility=25, finess=65, magatk=5, magdef=20, resistance=10, special=1, athletics=1, stealth=1, sleight=1, investigation=1, insight=1, persuasion=1),
+        "rainbow_eye": Race("Rainbow Eye", "humanoid", 1, power_level=40, hp=40, mp=50, sp=20, phyatk=5, phydef=15, agility=20, finess=30, magatk=25, magdef=20, resistance=10, special=5, acrobatics=1, investigation=2, insight=2, perception=2, deception=1, persuasion=2, performance=3),
     }
     racial_class = racial_class_list[race_name]
     return racial_class

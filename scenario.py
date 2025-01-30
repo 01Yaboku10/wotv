@@ -6,32 +6,48 @@ import math
 import effects as ef
 import racial_classes as rc
 import job_classes as jc
+import saveloader as sl
+import manu as menu
 
 class Game():
     def __init__(self):
         print("---------=New Scenario=---------")
         name = input("Name of Scenario: ").lower()
         self.scenario = Scenario(name)
-        self.assigned_players, self.player_objects = gl.player_assign()
+        self.assigned_players, self.player_objects, self.player_prefixes = gl.player_assign()
         gl.team_assign(self.player_objects)
         print("---------=Teams=---------")
         print("Team 1:", end="")
         for player in self.player_objects:
             if player.team == 1:
-                print(f" ID:{player.id} {player.firstname}", end="")
+                print(f" ID:{player.id} {player.prefix} {player.firstname}", end="")
         print(".")
         print("Team 2:", end="")
         for player in self.player_objects:
             if player.team == 2:
-                print(f" ID:{player.id} {player.firstname}", end="")
+                print(f" ID:{player.id}  {player.prefix} {player.firstname}", end="")
         print(".")
-        self.game()
+        self.add_stats()
+        while True:
+            gamemode = input("Choose gamemode: [A]dventure, [B]attle: ").upper()
+            if gamemode == "B":
+                self.gamemode_battle()
+                break
+            elif gamemode == "A":
+                self.gamemode_adventure()
+                break
 
-    def add_stats(self):
+    def add_stats(self, player: list[object] = None):
         print("DEBUGG: Adding characters...")
-        for player in self.player_objects:
+        if player is not None:
+            player_list = player
+        else:
+            player_list = self.player_objects
+
+        for player in player_list:
             player.new_hp = player.hp
             player.new_mp = player.mp
+            player.new_sp = player.sp
             player.new_phyatk = player.phyatk
             player.new_phydef = player.phydef
             player.new_agility = player.agility
@@ -54,6 +70,7 @@ class Game():
             player.new_karma = player.karma
             player.max_hp = player.hp
             player.max_mp = player.mp
+            player.max_sp = player.sp
             player.max_phyatk = player.phyatk
             player.max_phydef = player.phydef
             player.max_agility = player.agility
@@ -76,62 +93,60 @@ class Game():
             player.max_karma = player.karma
             player.status_effects = []
             player.new_power_level = player.power_level
+            sl.update_sheet(player)
             print(f"DEBUGG: Added: {player.firstname}")
 
-    def status_apply(self, player: object, effect: object, spell_effect: int):
+    def status_apply(self, player: object, effect: object, spell_effect: int):  # TODO: REMOVE ALL THE DAMAGE/HEAL/BUFF CALCULATIONS FROM HERE AND ADD IT TO THE EFFECT INSTEAD
         if effect.is_effect:
             effect.spell_effect=spell_effect
-        bonus = spell_effect if effect.is_effect else 1
-        bonus = abs(bonus)
-        if effect.use_religion is not None:
-            print("DEBUGG: USING RELIGION")
-            if effect.use_religion != player.religion:
-                bonus = -bonus
-        player.new_hp += round(effect.hp*bonus)
-        player.new_mp += round(effect.mp*bonus)
-        player.new_phyatk += round(effect.phyatk*bonus)
-        player.new_phydef += round(effect.phydef*bonus)
-        player.new_agility += round(effect.agility*bonus)
-        player.new_finess += round(effect.finess*bonus)
-        player.new_magatk += round(effect.magatk*bonus)
-        player.new_magdef += round(effect.magdef*bonus)
-        player.new_resistance += round(effect.resistance*bonus)
-        player.new_special += round(effect.special*bonus)
-        player.new_athletics += round(effect.athletics*bonus)
-        player.new_acrobatics += round(effect.acrobatics*bonus)
-        player.new_stealth += round(effect.stealth*bonus)
-        player.new_sleight += round(effect.sleight*bonus)
-        player.new_investigation += round(effect.investigation*bonus)
-        player.new_insight += round(effect.insight*bonus)
-        player.new_perception += round(effect.perception*bonus)
-        player.new_deception += round(effect.deception*bonus)
-        player.new_intimidation += round(effect.intimidation*bonus)
-        player.new_persuasion += round(effect.persuasion*bonus)
-        player.new_performance += round(effect.performance*bonus)
-        player.new_karma += round(effect.karma*bonus)
+        effect.apply_bonus(player)
+        player.new_hp += effect.new_hp
+        player.new_mp += effect.new_mp
+        player.new_sp += effect.new_sp
+        player.new_phyatk += effect.new_phyatk
+        player.new_phydef += effect.new_phydef
+        player.new_agility += effect.new_agility
+        player.new_finess += effect.new_finess
+        player.new_magatk += effect.new_magatk
+        player.new_magdef += effect.new_magdef
+        player.new_resistance += effect.new_resistance
+        player.new_special += effect.new_special
+        player.new_athletics += effect.new_athletics
+        player.new_acrobatics += effect.new_acrobatics
+        player.new_stealth += effect.new_stealth
+        player.new_sleight += effect.new_sleight
+        player.new_investigation += effect.new_investigation
+        player.new_insight += effect.new_insight
+        player.new_perception += effect.new_perception
+        player.new_deception += effect.new_deception
+        player.new_intimidation += effect.new_intimidation
+        player.new_persuasion += effect.new_persuasion
+        player.new_performance += effect.new_performance
+        player.new_karma += effect.new_karma
         if effect.is_max:
-            player.max_hp += round(effect.hp*bonus)
-            player.max_mp += round(effect.mp*bonus)
-            player.max_phyatk += round(effect.phyatk*bonus)
-            player.max_phydef += round(effect.phydef*bonus)
-            player.max_agility += round(effect.agility*bonus)
-            player.max_finess += round(effect.finess*bonus)
-            player.max_magatk += round(effect.magatk*bonus)
-            player.max_magdef += round(effect.magdef*bonus)
-            player.max_resistance += round(effect.resistance*bonus)
-            player.max_special += round(effect.special*bonus)
-            player.max_athletics += round(effect.athletics*bonus)
-            player.max_acrobatics += round(effect.acrobatics*bonus)
-            player.max_stealth += round(effect.stealth*bonus)
-            player.max_sleight += round(effect.sleight*bonus)
-            player.max_investigation += round(effect.investigation*bonus)
-            player.max_insight += round(effect.insight*bonus)
-            player.max_perception += round(effect.perception*bonus)
-            player.max_deception += round(effect.deception*bonus)
-            player.max_intimidation += round(effect.intimidation*bonus)
-            player.max_persuasion += round(effect.persuasion*bonus)
-            player.max_performance += round(effect.performance*bonus)
-            player.max_karma += round(effect.karma*bonus)
+            player.max_hp += effect.new_hp
+            player.max_mp += effect.new_mp
+            player.max_sp += effect.new_sp
+            player.max_phyatk += effect.new_phyatk
+            player.max_phydef += effect.new_phydef
+            player.max_agility += effect.new_agility
+            player.max_finess += effect.new_finess
+            player.max_magatk += effect.new_magatk
+            player.max_magdef += effect.new_magdef
+            player.max_resistance += effect.new_resistance
+            player.max_special += effect.new_special
+            player.max_athletics += effect.new_athletics
+            player.max_acrobatics += effect.new_acrobatics
+            player.max_stealth += effect.new_stealth
+            player.max_sleight += effect.new_sleight
+            player.max_investigation += effect.new_investigation
+            player.max_insight += effect.new_insight
+            player.max_perception += effect.new_perception
+            player.max_deception += effect.new_deception
+            player.max_intimidation += effect.new_intimidation
+            player.max_persuasion += effect.new_persuasion
+            player.max_performance += effect.new_performance
+            player.max_karma += effect.new_karma
 
     def status_update(self, player: object):
         if not player.status_effects is None:
@@ -139,57 +154,60 @@ class Game():
                 if effect.ept:
                     print(f"Player {player.id} took {round(effect.effect)} damage from {effect.name}")
                     player.new_hp += round(effect.effect)
-                bonus = effect.spell_effect if effect.is_effect else 1
                 if effect.time_left == 0:
-                    player.new_hp -= round(effect.hp*bonus)
-                    player.new_mp -= round(effect.mp*bonus)
-                    player.new_phyatk -= round(effect.phyatk*bonus)
-                    player.new_phydef -= round(effect.phydef*bonus)
-                    player.new_agility -= round(effect.agility*bonus)
-                    player.new_finess -= round(effect.finess*bonus)
-                    player.new_magatk -= round(effect.magatk*bonus)
-                    player.new_magdef -= round(effect.magdef*bonus)
-                    player.new_resistance -= round(effect.resistance*bonus)
-                    player.new_special -= round(effect.special*bonus)
-                    player.new_athletics -= round(effect.athletics*bonus)
-                    player.new_acrobatics -= round(effect.acrobatics*bonus)
-                    player.new_stealth -= round(effect.stealth*bonus)
-                    player.new_sleight -= round(effect.sleight*bonus)
-                    player.new_investigation -= round(effect.investigation*bonus)
-                    player.new_insight -= round(effect.insight*bonus)
-                    player.new_perception -= round(effect.perception*bonus)
-                    player.new_deception -= round(effect.deception*bonus)
-                    player.new_intimidation -= round(effect.intimidation*bonus)
-                    player.new_persuasion -= round(effect.persuasion*bonus)
-                    player.new_performance -= round(effect.performance*bonus)
+                    player.new_hp -= effect.new_hp
+                    player.new_mp -= effect.new_mp
+                    player.new_sp -= effect.new_sp
+                    player.new_phyatk -= effect.new_phyatk
+                    player.new_phydef -= effect.new_phydef
+                    player.new_agility -= effect.new_agility
+                    player.new_finess -= effect.new_finess
+                    player.new_magatk -= effect.new_magatk
+                    player.new_magdef -= effect.new_magdef
+                    player.new_resistance -= effect.new_resistance
+                    player.new_special -= effect.new_special
+                    player.new_athletics -= effect.new_athletics
+                    player.new_acrobatics -= effect.new_acrobatics
+                    player.new_stealth -= effect.new_stealth
+                    player.new_sleight-= effect.new_sleight
+                    player.new_investigation -= effect.new_investigation
+                    player.new_insight -= effect.new_insight
+                    player.new_perception -= effect.new_perception
+                    player.new_deception -= effect.new_deception
+                    player.new_intimidation -= effect.new_intimidation
+                    player.new_persuasion -= effect.new_persuasion
+                    player.new_performance -= effect.new_performance
+                    player.new_karma -= effect.new_karma
                     if effect.is_max:
-                        player.max_hp -= round(effect.hp*bonus)
-                        player.max_mp -= round(effect.mp*bonus)
-                        player.max_phyatk -= round(effect.phyatk*bonus)
-                        player.max_phydef -= round(effect.phydef*bonus)
-                        player.max_agility -= round(effect.agility*bonus)
-                        player.max_finess -= round(effect.finess*bonus)
-                        player.max_magatk -= round(effect.magatk*bonus)
-                        player.max_magdef -= round(effect.magdef*bonus)
-                        player.max_resistance -= round(effect.resistance*bonus)
-                        player.max_special -= round(effect.special*bonus)
-                        player.max_athletics -= round(effect.athletics*bonus)
-                        player.max_acrobatics -= round(effect.acrobatics*bonus)
-                        player.max_stealth -= round(effect.stealth*bonus)
-                        player.max_sleight -= round(effect.sleight*bonus)
-                        player.max_investigation -= round(effect.investigation*bonus)
-                        player.max_insight -= round(effect.insight*bonus)
-                        player.max_perception -= round(effect.perception*bonus)
-                        player.max_deception -= round(effect.deception*bonus)
-                        player.max_intimidation -= round(effect.intimidation*bonus)
-                        player.max_persuasion -= round(effect.persuasion*bonus)
-                        player.max_performance -= round(effect.performance*bonus)
-                        player.max_karma -= round(effect.karma*bonus)
+                        player.max_hp -= effect.new_hp
+                        player.max_mp -= effect.new_mp
+                        player.max_sp -= effect.new_sp
+                        player.max_phyatk -= effect.new_phyatk
+                        player.max_phydef -= effect.new_phydef
+                        player.max_agility -= effect.new_agility
+                        player.max_finess -= effect.new_finess
+                        player.max_magatk -= effect.new_magatk
+                        player.max_magdef -= effect.new_magdef
+                        player.max_resistance -= effect.new_resistance
+                        player.max_special -= effect.new_special
+                        player.max_athletics -= effect.new_athletics
+                        player.max_acrobatics -= effect.new_acrobatics
+                        player.max_stealth -= effect.new_stealth
+                        player.max_sleight -= effect.new_sleight
+                        player.max_investigation -= effect.new_investigation
+                        player.max_insight -= effect.new_insight
+                        player.max_perception -= effect.new_perception
+                        player.max_deception -= effect.new_deception
+                        player.max_intimidation -= effect.new_intimidation
+                        player.max_persuasion -= effect.new_persuasion
+                        player.max_performance -= effect.new_performance
+                        player.max_karma -= effect.new_karma
 
                     player.status_effects.remove(effect)
                     print(f"DEBUGG: {effect.name} removed")
                 else:
                     effect.time_left -= 1
+        sl.update_sheet(player)
     
     def power_check(self, player: object):
         player.new_power_level = 0
@@ -205,16 +223,115 @@ class Game():
                             10*(player.new_athletics+player.new_acrobatics+player.new_stealth+player.new_sleight+player.new_deception+player.new_perception+player.new_performance+player.new_persuasion+player.new_insight+player.new_investigation+player.new_intimidation))
         print(f"Character [ID:{player.id}] {player.firstname}'s power level set to {player.new_power_level}")
 
-    def game(self):
+    def player_equipment(self):
+        while True:
+            set_player = input("Player Prefix ID: ").upper()
+            if set_player in self.player_prefixes:
+                while True:
+                    player = self.player_prefixes[set_player]
+                    player.print_eq()
+                    choice = input("[A]dd, [R]emove, [E]quip, [T]ransfer, [D]one: ").upper()
+                    if choice == "A":
+                        player.equipment_add()
+                    elif choice == "T":
+                        if not player.inventory:
+                            print("ERROR: Inventory Empty")
+                            continue
+                        for index, item in enumerate(player.inventory):
+                            print(f"[{index+1}] {item}")
+                        while True:
+                            transfer = fs.is_int(input("Transfer item with ID: "))
+                            if 1 <= transfer <= len(player.inventory):
+                                transfer_item: tuple[str, int] = player.inventory[transfer-1]
+                                item, amount = transfer_item
+                                if amount > 1:
+                                    amount = fs.is_int(input(f"Transfer Amount [{amount}]: "))
+                                transfer_to = input("Transfer to player with prefix ID: ").upper()
+                                if transfer_to in self.player_prefixes:
+                                    if fs.is_tuple(item):
+                                        send_item = item
+                                        item, level = item
+                                    else:
+                                        send_item = item
+                                        level = 0
+                                    transfer_to = self.player_prefixes[transfer_to]
+                                    transfer_to.inventory_add(send_item, amount)
+                                    player.inventory_remove(item, amount, level)
+                                    sl.update_sheet(transfer_to)
+                                    break
+                                else:
+                                    print("ERROR: Player not found...")
+                        
+                    elif choice == "R":
+                        while True:
+                            remove = input("Remove from [I]nventory, [E]quipment: ").upper()
+                            if remove == "I":
+                                remove_item = input("Remove Item: ")
+                                remove_amount = fs.is_int(input("Remove Amount: "))
+                                player.equipment_reset()
+                                player.inventory_remove(remove_item, remove_amount)
+                                player.equipment_check()
+                                break
+                            elif remove == "E":
+                                player.equipment_remove()
+                                break
+                    elif choice == "E":
+                        player.inventory_equip()
+                    elif choice == "D":
+                        break
+                break
+
+    def gamemode_adventure(self):
+        while True:
+            print("---------=Adventure=---------")
+            action = input("[A]ction, [E]quipment, [U]pdate Effects, [B]attle: ").upper()
+            if action == "A":
+                while True:
+                    choice = input("[A]ction or [G]od Action?: ").upper()
+                    if choice == "G":
+                        self.god_action()
+                        break
+                    elif choice == "A":
+                        while True:
+                            player = input("Player Prefix ID: ").upper()
+                            if player in self.player_prefixes:
+                                player = self.player_prefixes[player]
+                                self.action(player)
+                                break
+                        break
+            elif action == "E":
+                self.player_equipment()
+            elif action == "U":
+                while True:
+                    player = input("Player Prefix ID: ").upper()
+                    if player == "UA":
+                        for player in self.player_objects:
+                            self.status_update(player)
+                        break
+                    elif player in self.player_prefixes:
+                        player = self.player_prefixes[player]
+                        self.status_update(player)
+                        break
+            elif action == "B":
+                while True:
+                    confirm = input("Are you sure you want to exit Adventure mode? [Y/N]: ").upper()
+                    if confirm == "Y":
+                        self.gamemode_battle(True)
+                        break
+                    elif confirm == "N":
+                        break
+
+    def gamemode_battle(self, start = False):
         print(f"---------=Scenario {self.scenario.name}=---------")
-        self.add_stats()
         self.generate_initiative()
         tm = gl.Turnmeter()
         while True:
             print(f"---------=Scenario {self.scenario.name}, Turn {tm.currentturn}=---------")
             for player in self.initative_list:
-                print(f"---------={player.firstname}'s Turn=---------")
-                self.status_update(player)
+                print(f"---------=[{player.prefix}] {player.firstname}'s Turn=---------")
+                if not start:
+                    self.status_update(player)
+                start = False
                 self.power_check(player)
                 if player.status_effects:
                     print("Currently Active Effects:")
@@ -222,11 +339,20 @@ class Game():
                         print(f"{stat_eff.name} [{stat_eff.time_left}]")
                 while True:
                     print("-------------------------")
-                    choice = input("[G]od action, [A]ction, [N]ext\n").upper().strip()
+                    choice = input("[G]od action, [A]ction, [ADVENTURE], [N]ext\n").upper().strip()
                     if choice == "G":
                         self.god_action()
                     elif choice == "A":
                         self.action(player)
+                    elif choice == "ADVENTURE":
+                        while True:
+                            choice = input("Are you sure you want to switch to Adventure Mode? [Y/N]").upper()
+                            if choice == "Y":
+                                self.gamemode_adventure()
+                                break
+                            elif choice == "N":
+                                break
+                        
                     elif choice == "N":
                         break
             tm.nextturn()
@@ -265,23 +391,36 @@ class Game():
         pierce = 0.75 if spell.enchant == "pierce" else 1
         affinity = 1.25 if spell.attribute in player.attribute else 0.75
 
-        #  MP COST
-        mp_cost = math.ceil(spell.tier*((1.5 if maximize == 1.25 else 1)+over+boost+silent+concentrate+widen+twin+triplet+delay))
-        if mp_cost > player.new_mp:
-            print("ERROR: MP Cost will exceed available MP")
-            spell_enchantments.clear()
-            return
-
+        #  MP AND SP COST
+        if spell.use_mp:
+            mp_cost = math.ceil(spell.tier*((1.5 if maximize == 1.25 else 1)+over+boost+silent+concentrate+widen+twin+triplet+delay))
+            if mp_cost > player.new_mp:
+                print("ERROR: MP Cost will exceed available MP")
+                spell_enchantments.clear()
+                return
+        else:
+            mp_cost = 0
+        if spell.use_sp:
+            sp_cost = math.ceil(spell.tier*((1.5 if maximize == 1.25 else 1)+over+boost+silent+concentrate+widen+twin+triplet+delay))
+            if sp_cost > player.new_sp:
+                print("ERROR: SP Cost will exceed available SP")
+                spell_enchantments.clear()
+                return
+        else:
+            sp_cost = 0
+            
         #  OPPONENT SELECTION
         if spell.type == "self_buff":
             opponent = player.id
         else:
             opponent_list = []
             while True:
-                opponent = input("Opponent ID ([D]one): ").upper()
+                opponent = input("Opponent Prefix ID ([D]one): ").upper()
                 if opponent == "D":
                     break
-                if opponent in self.assigned_players:
+                if opponent in self.player_prefixes:
+                    opponent = self.player_prefixes[opponent]
+                    opponent = opponent.id
                     for oppo in self.player_objects:
                         if oppo.id == int(opponent):
                             opponent_list.append(oppo)
@@ -297,8 +436,8 @@ class Game():
             if not spell.statuses is None:
                 for effect in spell.statuses:
                     if effect.success != 1:
-                        status_dice = fs.is_int(input(f"Status roll for {effect.name}: "))
-                        if round(status_dice/fs.spell_dice(spell.tier))>=(1-effect.success):
+                        status_dice = fs.is_int(input(f"Status roll for {effect.name} (D20): "))
+                        if (status_dice/20)>=(1-effect.success):
                             effect.is_active = True
                     else:
                         effect.is_active = True
@@ -327,9 +466,11 @@ class Game():
                 print("-------------------------")
                 self.status_effect(spell, oppon)
                 if not spell.type == "Buff":
-                    print(f"Dealt {round(effect)} damage to Player {oppon.id}")
-                print(f"Player {oppon.id} now has {oppon.new_hp}/{oppon.max_hp} HP")
+                    print(f"Dealt {round(effect)} damage to Player {oppon.prefix} ID:{oppon.id}")
+                print(f"Player {oppon.prefix} ID:{oppon.id} now has {oppon.new_hp}/{oppon.max_hp} HP")
+                sl.update_sheet(oppon)
             player.new_mp -= mp_cost
+            player.new_sp -= sp_cost
             if spell.target == "AOE" and spell.karma != 0:
                 for opponent in opponent_list:
                     if opponent.religion == player.religion:
@@ -338,13 +479,17 @@ class Game():
                         player.new_karma += spell.karma
             else:
                 player.new_karma += spell.karma
-            print(f"Player {player.id} used {mp_cost} MP, and now has {player.new_mp}/{player.max_mp} MP")
+            if spell.use_mp:
+                print(f"Player {player.prefix} ID:{player.id} used {mp_cost} MP, and now has {player.new_mp}/{player.max_mp} MP")
+            if spell.use_sp:
+                print(f"Player {player.prefix} ID:{player.id} used {sp_cost} SP, and now has {player.new_sp}/{player.max_sp} SP")
             if spell.karma != 0:
-                print(f"Player {player.id} used {spell.karma} Karma, and now has {player.new_karma} Karma")
+                print(f"Player {player.prefix} ID:{player.id} used {spell.karma} Karma, and now has {player.new_karma} Karma")
             
             opponent_list.clear()
             spell_enchantments.clear()
             self.power_check(player)
+            sl.update_sheet(player)
 
             for play in self.player_objects:
                 if play.new_hp <= 0:
@@ -369,23 +514,39 @@ class Game():
                         opponent.status_effects.remove(current_effect)
                 opponent.status_effects.append(status_effect)
                 self.status_apply(opponent, status_effect, self.effect)
-                print(f"Player {opponent.id} has recieved {status_effect.name} for {status_effect.time} turns")
+                print(f"Player {opponent.prefix} ID:{opponent.id} has recieved {status_effect.name} for {status_effect.time} turns")
 
     def god_action(self):
-        choice = input("[D]amage/Heal, [E]ffect, [I]nfo, [C]ontinue\n").upper().strip()
+        choice = input("[D]amage/Heal, [P]layer, [B]ackpack, [E]ffect, [I]nfo, [S]ave, [Q]uit, [C]ontinue\n").upper().strip()
         if choice == "D":
-            character = input("Character ID: ")
-            if str(character) in self.assigned_players:
+            character = input("Character Prefix ID: ").upper()
+            if character in self.player_prefixes:
+                character = self.player_prefixes[character]
+                character = character.id
                 for player in self.player_objects:
                     if player.id == int(character):
                         damage = input("Deal damage(-)/heal(+) equal to: ")
                         player.new_hp += int(damage)
                         print(f"{player.firstname} took damage equal to {damage} and now has {player.new_hp} HP")
+                        sl.update_sheet(player)
             else:
                 print("ERROR: No player found")
+        elif choice == "P":
+            assigned, objects, prefixes = gl.player_assign(self.player_objects)
+
+            for i in objects:
+                if i.id not in self.assigned_players:
+                    print(f"ADDING STATS FOR {i.firstname}")
+                    self.add_stats([i])
+
+            self.assigned_players = assigned
+            self.player_objects = objects
+            self.player_prefixes = prefixes
         elif choice =="E":
-            character = input("Character ID: ")
-            if str(character) in self.assigned_players:
+            character = input("Character Prefix ID: ").upper()
+            if character in self.player_prefixes:
+                character = self.player_prefixes[character]
+                character = character.id
                 for player in self.player_objects:
                     if player.id == int(character):
                         choice = input("[A]dd, [E]dit: ").upper()
@@ -410,23 +571,23 @@ class Game():
                         elif choice == "A":
                             effect = input("Apply effect: ").lower()
                             time = input("Time: ")
-                            extend = input("Is Extended? (Y/N): ").upper()
+                            extend = input("Is Extended? [Y/N]: ").upper()
                             extend = 1.5 if extend == "Y" else 1
-                            use_effect = input("Use Effect: ").upper()
+                            use_effect = input("Use Effect [Y/N]: ").upper()
                             if use_effect == "Y":
                                 use_effect = True
                             else:
                                 use_effect = False
                             status_effect = ef.effect_list(effect, int(time), 1, use_effect)
                             if status_effect.ept:
-                                damage_effect = fs.is_int(input("Damage Effect Multiplier: "))
+                                damage_effect = fs.is_int(input("Damage/Heal Effect: "))
                                 status_effect.effect *= int(damage_effect)
                             else:
                                 damage_effect = 1
                             if extend == 1.5:
                                 status_effect.time *= extend
                             if status_effect.is_effect:
-                                effect_multiplier = fs.is_int(input("Effect: "))
+                                effect_multiplier = fs.is_int(input("Damage/Heal Effect Multiplier: "))
                             else:
                                 effect_multiplier = 1
                             for current_effect in player.status_effects:
@@ -436,19 +597,34 @@ class Game():
                             player.status_effects.append(status_effect)
                             self.status_apply(player, status_effect, effect_multiplier)
                             print(f"Player {player.id} has recieved {status_effect.name} for {status_effect.time} turns")
+                            sl.update_sheet(player)
+        elif choice == "B":
+            self.player_equipment()
+        elif choice == "S":
+            character = input("Save character with Prefix ID: ").upper()
+            if character == "SA":
+                sl.save_all("character_saves", self.player_objects)
+            else:
+                if character in self.player_prefixes:
+                    character = self.player_prefixes[character]
+                    sl.save_character("character_saves", character)
         elif choice == "I":
-            character = input("Character ID: ")
-            if str(character) in self.assigned_players:
+            character = input("Character Prefix ID: ").upper()
+            if character in self.player_prefixes:
+                character = self.player_prefixes[character]
+                character = character.id
                 for player in self.player_objects:
                     if player.id == int(character):
                         print(f"---------={player.firstname} {player.surname}=---------")
+                        print(f"Board Piece: {player.prefix}")
                         print(f"Power level: {player.new_power_level}/{player.power_level}")
                         print(f"Karma: {player.new_karma}/{player.karma}")
+                        print(f"Religion: {player.religion}")
                         print("---------=Effects=---------")
                         for current_effect in player.status_effects:
                             print(f"{current_effect.name} [{current_effect.time_left}]")
                         print("---------=Stats=---------")
-                        print(f"HP:{player.new_hp}/{player.max_hp}, MP:{player.new_mp}/{player.max_mp}\n"
+                        print(f"HP:{player.new_hp}/{player.max_hp}, MP:{player.new_mp}/{player.max_mp}, SP:{player.new_sp}/{player.max_sp}\n"
                               f"Agility:{player.new_agility}/{player.max_agility}, Finess:{player.new_finess}/{player.max_finess}\n"
                               f"PHY.ATK:{player.new_phyatk}/{player.max_phyatk}, PHY.DEF:{player.new_phydef}/{player.max_phydef}\n"
                               f"MAG.ATK:{player.new_magatk}/{player.max_magatk}, MAG.DEF:{player.new_magdef}/{player.max_magdef}\n"
@@ -459,9 +635,27 @@ class Game():
                               f"INV:{player.new_investigation}/{player.max_investigation}, PER:{player.new_perception}/{player.max_perception}\n"
                               f"DEC:{player.new_deception}/{player.max_deception}, INTI:{player.new_intimidation}/{player.max_intimidation}\n"
                               f"PERS:{player.new_persuasion}/{player.max_persuasion}, PERF:{player.new_performance}/{player.max_performance}")
+                        player.print_eq()
 
+        elif choice == "Q":
+            while True:
+                choice = input("Would you like to save a character? [Y/N]: ").upper()
+                if choice == "Y":
+                    character = input("Save character with Prefix ID: ").upper()
+                    if character == "SA":
+                        sl.save_all("character_saves", self.player_objects)
+                    else:
+                        if character in self.player_prefixes:
+                            character = self.player_prefixes[character]
+                            sl.save_character("character_saves", character)
+                    break
+                elif choice == "N":
+                    break
+            print("Returning to Main Menu...")
+            menu.main_menu()
         elif choice == "C":
             return
+    
 
     def generate_initiative(self):
         self.initative_list = []

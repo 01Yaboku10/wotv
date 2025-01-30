@@ -12,7 +12,7 @@ def log_clear():
 def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
     print("---------=Assign Teams=---------")
     for index, character in enumerate(players):
-            print(f"[{index+1}] ID:{character.id} {character.firstname}")
+        print(f"[{index+1}] ID:{character.id} {character.firstname}")
     print("--=Assign players for Team 1=--")
     while True:
         choice = input("Assign id ([D]one): ").upper()
@@ -38,12 +38,28 @@ def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
             player = players[choice-1]
             player.team = 2
 
-def player_assign() -> tuple[list[int], list[object]]:
+def player_assign(players: list[object] = None) -> tuple[list[int], list[object]]:
     print("---------=Assign Players=---------")
     assigned_players = []
     player_objects = []
-    for index, character in enumerate(ch.character_dic):
-            print(f"[{index+1}] ID:{character} {ch.character_dic[character].firstname}")
+    player_prefixes = {}
+    new_players = []
+
+    # Check for already existing players
+    if players is not None:
+        for pl in players:
+            assigned_players.append(pl.id)
+            player_objects.append(pl)
+            player_prefixes[pl.prefix] = pl
+
+    for pla in ch.character_dic:
+        pla = int(pla)
+        if pla not in assigned_players:
+            new_players.append(str(pla))
+
+    for index, play in enumerate(new_players):
+        player = ch.character_dic.get(play)
+        print(f"[{index+1}] ID:{player.id}, {player.firstname}")
 
     while True:
         choice = input("Assign id ([D]one): ").upper()
@@ -53,15 +69,24 @@ def player_assign() -> tuple[list[int], list[object]]:
             print("ERROR: Not integer")
             return
         choice = int(choice)
-        if 1 <= choice <= len(ch.character_dic):
-            assigned_player = list(ch.character_dic.keys())[choice-1]
-            if assigned_player in assigned_players:
+        if 1 <= choice <= len(new_players):
+            player: int = new_players[choice-1]
+            assigned_player: object = ch.character_dic.get(player)
+            if assigned_player.id in assigned_players:
                 print("ERROR: Player already registered")
                 continue
-            assigned_players.append(assigned_player)
-            player_objects.append(ch.character_dic[assigned_player])
+            while True:
+                prefix = input("Assign board piece: ").upper()
+                if prefix in player_prefixes:
+                    print("ERROR: Prefix already taken.")
+                    continue
+                assigned_player.prefix = prefix
+                assigned_players.append(assigned_player.id)
+                player_objects.append(assigned_player)
+                player_prefixes[prefix] = assigned_player
+                break
 
-    return assigned_players, player_objects    
+    return assigned_players, player_objects, player_prefixes
 
 def magic_attribute_gen():
     attributes = [
