@@ -31,7 +31,8 @@ def google_write(player_id, cell, data, dir="h"):
     sheet.update(values=values, range_name=cell)
 
 def create_matrix(race_classes: list, race_levels, job_classes, job_levels, inventory_names, inventory_amount, attributes, nicknames):
-    max_len = max(len(race_classes), len(job_classes), len(inventory_names), len(attributes), len(nicknames))
+    #max_len = max(len(race_classes), len(job_classes), len(inventory_names), len(attributes), len(nicknames))
+    max_len = 20
 
     def pad_list(lst, length):
         return lst + [""] * (length - len(lst))

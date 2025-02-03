@@ -115,7 +115,7 @@ class Effect():
         if self.use_religion is not None:
             print("DEBUGG: USING RELIGION")
             if self.use_religion != p.religion:
-                bonus = -bonus
+                self.bonus = -self.bonus
         self.new_hp = round(self.hp*(p.max_hp if self.affect_max else self.bonus))
         self.new_mp = round(self.mp*(p.max_sp if self.affect_max else self.bonus))
         self.new_sp = round(self.sp*(p.max_mp if self.affect_max else self.bonus))
@@ -141,14 +141,19 @@ class Effect():
         self.new_karma = round(self.karma*(p.max_karma if self.affect_max else self.bonus))
 
 
-def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False, use_religion: str = None, affect_max: bool = False):
+def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False, use_religion: str = None, affect_max: bool = False, use_obj: object = None):
     effects_list = {
+        # Spell Effects
         "ignite": Effect("Ignite", time=tim, time_left=tim, ept=True, effect=-0.2, success=succ),
         "corrosion": Effect("Corrosion", time=tim, time_left=tim, phydef=-1, is_effect=True, success=succ),
         "shock": Effect("Shock", time=tim, time_left=tim, perception=-0.3, agility=-0.5, is_effect=use_effect, success=succ, affect_max=affect_max),
         "stun": Effect("Stun", time=tim, time_left=tim, acrobatics=-100, agility=-100, success=succ),
         "increase_all_stats": Effect("Increase All Stats", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, effect=1, hp=1, mp=1, phyatk=1, phydef=1, agility=1, finess=1, magatk=1, magdef=1, resistance=1, special=1),
-        "increase_all_skills": Effect("Increase All Skills", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, effect=1, athletics=1, acrobatics=1, stealth=1, sleight=1, investigation=1, insight=1, perception=1, deception=1, intimidation=1, persuasion=1, performance=1)
+        "increase_all_skills": Effect("Increase All Skills", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, effect=1, athletics=1, acrobatics=1, stealth=1, sleight=1, investigation=1, insight=1, perception=1, deception=1, intimidation=1, persuasion=1, performance=1),
+
+        # Items
+        "strength": Effect("Strength", time=tim, time_left=tim, success=succ, phyatk=25, athletics=10, resistance=-10),
+        "swiftness": Effect("Swiftness", time=tim, time_left=tim, success=succ, agility=25, acrobatics=10, resistance=-10)
     }
     effect = effects_list[effect_name]
     return effect

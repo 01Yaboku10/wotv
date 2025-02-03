@@ -17,6 +17,7 @@ class Character():
                  racial_classes: list[tuple[str, int]] = None,
                  job_classes: list[tuple[str, int]] = None,
                  inventory: list[tuple[str, int]] = None,
+                 status_effects: list[object] = None,
                  equipment_h: tuple[str, int] = None,
                  equipment_c: tuple[str, int] = None,
                  equipment_l: tuple[str, int] = None,
@@ -67,6 +68,7 @@ class Character():
         self.racial_classes = racial_classes if racial_classes is not None else []
         self.inventory = inventory if inventory is not None else []
         self.balance_breaker = balance_breaker if balance_breaker is not None else []
+        self.status_effects = status_effects if status_effects is not None else []
         self.equipment_h = equipment_h
         self.equipment_c = equipment_c
         self.equipment_l = equipment_l
@@ -85,7 +87,7 @@ class Character():
         self.nicknames = nicknames if nicknames is not None else []
         self.weight = weight
         self.max_weight = max_weight
-        self.karma = karma
+        self.karma = self.new_karma = self.max_karma = karma
         self.race_type = race_type
         self.religion = religion
         self.level = 0
@@ -582,7 +584,10 @@ class Character():
                 self.inventory_add((add_item, level), 1)
         else:
             amount = fs.is_int(input("Amount: "))
-            self.inventory_add(add_item, amount)
+            if equipment.type == "consumable":
+                self.inventory_add((add_item, level), amount)
+            else:
+                self.inventory_add(add_item, amount)
         self.equipment_check()
 
     def equipment_remove(self):
@@ -690,7 +695,7 @@ class Character():
             if not item_exists:
                 self.inventory.append((add_item, add_amount))
 
-    def inventory_remove(self, remove, remove_amount, def_lvl = 0):
+    def inventory_remove(self, remove: str, remove_amount: int, def_lvl: int = 0):
         remove_list: list[tuple] = []
 
         #  Check for identical items
@@ -733,6 +738,8 @@ class Character():
                 item_name, item_level = item_name
                 if len(remove_list) == 1:
                     remove_level = item_level
+                w_item = it.item_list(item_name, item_level)
+                self.weight -= w_item.weight
                 if item_name == remove_name and item_level == remove_level:
                     if item_amount > 1 and not item_amount == remove_amount:
                         print(f"Removed {remove_amount} {self.inventory[index]}")
@@ -742,6 +749,8 @@ class Character():
                         del self.inventory[index]
             else:
                 if item_name == remove_name:
+                    w_item = it.item_list(item_name, 2)
+                    self.weight -= w_item.weight
                     if item_amount > 1 and not item_amount == remove_amount:
                         print(f"Removed {remove_amount} {self.inventory[index]}")
                         self.inventory[index] = (item_name, item_amount-remove_amount)
@@ -749,3 +758,93 @@ class Character():
                         print(f"Removed {self.inventory[index]}")
                         del self.inventory[index]
         remove_list.clear()
+
+    def inventory_use(self) -> None:
+        consumables: list[tuple[object, int, str]] = []
+
+        #  Find consumables
+        for i in self.inventory:
+            name, amount = i
+            if fs.is_tuple(name):
+                name, level = name
+            else:
+                level = 2
+            item: object = it.item_list(name, level)
+            if item.type == "consumable":
+                consumables.append((item, amount, name))
+
+        #  Select consumable
+        if consumables:
+            for index, consumable in enumerate(consumables):
+                item, amount, name = consumable
+                print(f"[{index+1}] {item.name} [Amount: {amount}]")
+
+            while True:
+                choice = fs.is_int(input("Consume item ID: "))
+                if 1 <= choice <= len(consumables):
+                    consumable, amount, con_name = consumables[choice-1]
+                    consume_amount = fs.is_int(input(f"Consume amount [{amount}]: "))
+                    for effect in consumable.status_effects:
+                        if effect.is_effect:
+                            spell_effect = fs.is_int(input(f"Spell Effect for {effect.name}: "))
+                        else:
+                            spell_effect = 1
+                        self.status_effects.append(effect)
+                        self.status_apply(effect, spell_effect)
+                    self.inventory_remove(con_name, consume_amount, consumable.level)
+                    break
+
+    
+
+    def status_apply(self, effect: object, spell_effect: int):
+        print(f"Applied {effect.name}")
+        if effect.is_effect:
+            effect.spell_effect=spell_effect
+        effect.apply_bonus(self)
+        self.new_hp += effect.new_hp
+        self.new_mp += effect.new_mp
+        self.new_sp += effect.new_sp
+        self.new_phyatk += effect.new_phyatk
+        self.new_phydef += effect.new_phydef
+        self.new_agility += effect.new_agility
+        self.new_finess += effect.new_finess
+        self.new_magatk += effect.new_magatk
+        self.new_magdef += effect.new_magdef
+        self.new_resistance += effect.new_resistance
+        self.new_special += effect.new_special
+        self.new_athletics += effect.new_athletics
+        self.new_acrobatics += effect.new_acrobatics
+        self.new_stealth += effect.new_stealth
+        self.new_sleight += effect.new_sleight
+        self.new_investigation += effect.new_investigation
+        self.new_insight += effect.new_insight
+        self.new_perception += effect.new_perception
+        self.new_deception += effect.new_deception
+        self.new_intimidation += effect.new_intimidation
+        self.new_persuasion += effect.new_persuasion
+        self.new_performance += effect.new_performance
+        self.new_karma += effect.new_karma
+        if effect.is_max:
+            self.max_hp += effect.new_hp
+            self.max_mp += effect.new_mp
+            self.max_sp += effect.new_sp
+            self.max_phyatk += effect.new_phyatk
+            self.max_phydef += effect.new_phydef
+            self.max_agility += effect.new_agility
+            self.max_finess += effect.new_finess
+            self.max_magatk += effect.new_magatk
+            self.max_magdef += effect.new_magdef
+            self.max_resistance += effect.new_resistance
+            self.max_special += effect.new_special
+            self.max_athletics += effect.new_athletics
+            self.max_acrobatics += effect.new_acrobatics
+            self.max_stealth += effect.new_stealth
+            self.max_sleight += effect.new_sleight
+            self.max_investigation += effect.new_investigation
+            self.max_insight += effect.new_insight
+            self.max_perception += effect.new_perception
+            self.max_deception += effect.new_deception
+            self.max_intimidation += effect.new_intimidation
+            self.max_persuasion += effect.new_persuasion
+            self.max_performance += effect.new_performance
+            self.max_karma += effect.new_karma

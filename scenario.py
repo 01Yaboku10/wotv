@@ -96,63 +96,11 @@ class Game():
             sl.update_sheet(player)
             print(f"DEBUGG: Added: {player.firstname}")
 
-    def status_apply(self, player: object, effect: object, spell_effect: int):  # TODO: REMOVE ALL THE DAMAGE/HEAL/BUFF CALCULATIONS FROM HERE AND ADD IT TO THE EFFECT INSTEAD
-        if effect.is_effect:
-            effect.spell_effect=spell_effect
-        effect.apply_bonus(player)
-        player.new_hp += effect.new_hp
-        player.new_mp += effect.new_mp
-        player.new_sp += effect.new_sp
-        player.new_phyatk += effect.new_phyatk
-        player.new_phydef += effect.new_phydef
-        player.new_agility += effect.new_agility
-        player.new_finess += effect.new_finess
-        player.new_magatk += effect.new_magatk
-        player.new_magdef += effect.new_magdef
-        player.new_resistance += effect.new_resistance
-        player.new_special += effect.new_special
-        player.new_athletics += effect.new_athletics
-        player.new_acrobatics += effect.new_acrobatics
-        player.new_stealth += effect.new_stealth
-        player.new_sleight += effect.new_sleight
-        player.new_investigation += effect.new_investigation
-        player.new_insight += effect.new_insight
-        player.new_perception += effect.new_perception
-        player.new_deception += effect.new_deception
-        player.new_intimidation += effect.new_intimidation
-        player.new_persuasion += effect.new_persuasion
-        player.new_performance += effect.new_performance
-        player.new_karma += effect.new_karma
-        if effect.is_max:
-            player.max_hp += effect.new_hp
-            player.max_mp += effect.new_mp
-            player.max_sp += effect.new_sp
-            player.max_phyatk += effect.new_phyatk
-            player.max_phydef += effect.new_phydef
-            player.max_agility += effect.new_agility
-            player.max_finess += effect.new_finess
-            player.max_magatk += effect.new_magatk
-            player.max_magdef += effect.new_magdef
-            player.max_resistance += effect.new_resistance
-            player.max_special += effect.new_special
-            player.max_athletics += effect.new_athletics
-            player.max_acrobatics += effect.new_acrobatics
-            player.max_stealth += effect.new_stealth
-            player.max_sleight += effect.new_sleight
-            player.max_investigation += effect.new_investigation
-            player.max_insight += effect.new_insight
-            player.max_perception += effect.new_perception
-            player.max_deception += effect.new_deception
-            player.max_intimidation += effect.new_intimidation
-            player.max_persuasion += effect.new_persuasion
-            player.max_performance += effect.new_performance
-            player.max_karma += effect.new_karma
-
     def status_update(self, player: object):
         if not player.status_effects is None:
             for effect in player.status_effects:
                 if effect.ept:
-                    print(f"Player {player.id} took {round(effect.effect)} damage from {effect.name}")
+                    print(f"Player {player.prefix} {player.firstname} took {round(effect.effect)} damage from {effect.name}")
                     player.new_hp += round(effect.effect)
                 if effect.time_left == 0:
                     player.new_hp -= effect.new_hp
@@ -221,7 +169,7 @@ class Game():
             player.new_power_level += job.power_level*level
         player.new_power_level += (player.new_hp+player.new_mp+player.new_phyatk+player.new_phydef+player.new_agility+player.new_finess+player.new_magdef+player.new_magatk+player.new_resistance+player.new_special+ \
                             10*(player.new_athletics+player.new_acrobatics+player.new_stealth+player.new_sleight+player.new_deception+player.new_perception+player.new_performance+player.new_persuasion+player.new_insight+player.new_investigation+player.new_intimidation))
-        print(f"Character [ID:{player.id}] {player.firstname}'s power level set to {player.new_power_level}")
+        print(f"Character [ID:{player.prefix}] {player.firstname}'s power level set to {player.new_power_level}")
 
     def player_equipment(self):
         while True:
@@ -230,9 +178,12 @@ class Game():
                 while True:
                     player = self.player_prefixes[set_player]
                     player.print_eq()
-                    choice = input("[A]dd, [R]emove, [E]quip, [T]ransfer, [D]one: ").upper()
+                    choice = input("[A]dd, [R]emove, [U]se, [E]quip, [T]ransfer, [D]one: ").upper()
                     if choice == "A":
                         player.equipment_add()
+                    elif choice == "U":
+                        player.inventory_use()
+                        sl.update_sheet(player)
                     elif choice == "T":
                         if not player.inventory:
                             print("ERROR: Inventory Empty")
@@ -411,7 +362,7 @@ class Game():
             
         #  OPPONENT SELECTION
         if spell.type == "self_buff":
-            opponent = player.id
+            opponent = player.prefix
         else:
             opponent_list = []
             while True:
@@ -420,16 +371,15 @@ class Game():
                     break
                 if opponent in self.player_prefixes:
                     opponent = self.player_prefixes[opponent]
-                    opponent = opponent.id
                     for oppo in self.player_objects:
-                        if oppo.id == int(opponent):
+                        if oppo.prefix == opponent.prefix:
                             opponent_list.append(oppo)
-                            print(f"DEBUGG: {opponent} added to opponent_list")
+                            print(f"DEBUGG: {opponent.prefix} {opponent.firstname} added to opponent_list")
 
             #  ATTACK AND SAVE ROLL
             dice = fs.is_int(input(f"Dice Roll (D{fs.spell_dice(spell.tier)}): "))
             for opp in opponent_list:
-                save = fs.is_int(input(f"Save throw for opponent {opp.id}: "))
+                save = fs.is_int(input(f"Save throw for opponent {opp.prefix} {opp.firstname}: "))
                 opp.save = save
 
             #  STATUS EFFECT ROLL
@@ -513,7 +463,7 @@ class Game():
                         print("DEBUGG: Replacing Status Effect")
                         opponent.status_effects.remove(current_effect)
                 opponent.status_effects.append(status_effect)
-                self.status_apply(opponent, status_effect, self.effect)
+                opponent.status_apply(status_effect, self.effect)
                 print(f"Player {opponent.prefix} ID:{opponent.id} has recieved {status_effect.name} for {status_effect.time} turns")
 
     def god_action(self):
@@ -522,9 +472,10 @@ class Game():
             character = input("Character Prefix ID: ").upper()
             if character in self.player_prefixes:
                 character = self.player_prefixes[character]
-                character = character.id
                 for player in self.player_objects:
-                    if player.id == int(character):
+                    if not fs.is_attrib(player, "prefix"):
+                        continue
+                    if player.prefix == character.prefix:
                         damage = input("Deal damage(-)/heal(+) equal to: ")
                         player.new_hp += int(damage)
                         print(f"{player.firstname} took damage equal to {damage} and now has {player.new_hp} HP")
@@ -595,7 +546,7 @@ class Game():
                                     print("DEBUGG: Replacing Status Effect")
                                     player.status_effects.remove(current_effect)
                             player.status_effects.append(status_effect)
-                            self.status_apply(player, status_effect, effect_multiplier)
+                            player.status_apply(status_effect, effect_multiplier)
                             print(f"Player {player.id} has recieved {status_effect.name} for {status_effect.time} turns")
                             sl.update_sheet(player)
         elif choice == "B":
