@@ -70,6 +70,7 @@ def race_list(race_name, level):
         "four_eye": Race("Four Eye", "humanoid", 1, power_level=40, hp=25, sp=30, mp=10, phyatk=30, phydef=25, agility=35, finess=40, magatk=10, magdef=10, resistance=10, special=5, athletics=2, acrobatics=2, investigation=2, insight=2, perception=3, intimidation=1, persuasion=1),
         "dwarf": Race("Dwarf", "humanoid", 1, power_level=50, hp=40, mp=10, sp=30, phyatk=30, phydef=25, agility=25, finess=65, magatk=5, magdef=20, resistance=10, special=1, athletics=1, stealth=1, sleight=1, investigation=1, insight=1, persuasion=1),
         "rainbow_eye": Race("Rainbow Eye", "humanoid", 1, power_level=40, hp=40, mp=50, sp=20, phyatk=5, phydef=15, agility=20, finess=30, magatk=25, magdef=20, resistance=10, special=5, acrobatics=1, investigation=2, insight=2, perception=2, deception=1, persuasion=2, performance=3),
+        "spirit": Race("Spirit", "heteromorph", level, power_level=30, hp=3, mp=3, sp=1, phyatk=1, phydef=1, agility=2, finess=1, magatk=2, magdef=2, resistance=2, special=2, performance=2, stealth=2)
     }
     racial_class = racial_class_list[race_name]
     return racial_class

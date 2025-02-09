@@ -14,7 +14,8 @@ class Spell():
                  target: str = "Single",  #  Use AOE for activation on all opponents in opponent list
                  enchant: str = None,  #  e.g pierce
                  status: list[object] = None,  #  List of status effects
-                 karma: int = 0  #  Karma consumed/added upon casted spell
+                 karma: int = 0,  #  Karma consumed/added upon casted spell
+                 cooldown: int = 0
                  ):
         self.name = name
         self.type = type
@@ -29,6 +30,7 @@ class Spell():
         self.karma = karma
         self.use_mp = use_mp
         self.use_sp = use_sp
+        self.cooldown = cooldown
 
     def __repr__(self) -> str:
         return (f"Name: {self.name}, Type: {self.type}, Tier: {self.tier}, Effect: {self.effect}, Duration: {self.time}, Attribute: {self.attribute}")

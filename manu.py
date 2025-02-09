@@ -1,8 +1,12 @@
+from colorama import Fore, Style, init
 import character as ch
 import failsafe as fs
 import saveloader as sl
 import scenario as so
 import gamelogic as gl
+
+init(autoreset=True)
+
 def main_menu():
     print("---------=Whisper of The Void=---------")
     choice = input("[C]haracter Menu, [S]cenario, [Q]uit\n").upper().strip()
@@ -11,23 +15,25 @@ def main_menu():
     elif choice == "S":
         scenario_menu()
     elif choice == "Q":
-        print("DEBUGG: Quitting game...")
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Quitting game...\nSee you next time!")
         exit()
     else:
         main_menu()
 
 def character_menu():
-    print("---------=Character Menu=---------")
+    print("------------------------------------=Character Menu=------------------------------------")
     choice = input("[C]reate character, [L]ook up character, [E]dit character, [S]ave character, [M]ain Menu\n").upper().strip()
     if choice == "C":
         character_creation()
     elif choice == "L":
         lookup_character()
     elif choice == "E":
-        lookup = fs.is_player(input("Character id: "))
-        if not lookup:
-            return
-        edit_character(lookup)
+        while True:
+            lookup = fs.is_player(input("Character id: "))
+            if not lookup:
+                continue
+            edit_character(lookup)
+            break
     elif choice == "S":
         save_character()
     elif choice == "M":
@@ -47,10 +53,11 @@ def scenario_menu():
 
 def character_creation():
     id: int = fs.is_int(input("Character id: "))
+    character_type = input("Character Type: ").lower()
     firstname: str = input("Character firstname: ").capitalize()
     surname: str = input("Character surname: ").capitalize()
     karma: int = fs.is_int(input("Character karma: "))
-    religion: str = input("Character religon").capitalize()
+    religion: str = input("Character religon: ").capitalize()
     attributes: list = []
     while True:
         attribute = input("Magical Attribute ([R]andom), ([D]one): ").capitalize()
@@ -59,19 +66,19 @@ def character_creation():
         if attribute == "R":
             attribute = gl.magic_attribute_gen()
             attributes.append(attribute)
-            print(f"Added Magic Attribute: {attribute}")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL}Added Magic Attribute: {attribute}")
         else:
             attributes.append(attribute)
-            print(f"Added Magic Attribute: {attribute}")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL}Added Magic Attribute: {attribute}")
             
     while True:
         race = input("Character Race: ").lower()
         if not fs.is_race(race):
-            print("Try Again...")
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Race not found, Try Again...")
         else:
             break
     level = fs.is_int(input("Race level: "))
-    player = ch.Character(id, firstname, surname, attributes, karma, religion, [(race, level)])
+    player = ch.Character(id, firstname, surname, attributes, karma, religion, [(race, level)], character_type=character_type)
     edit_character(player)
 
 def lookup_character():
@@ -84,7 +91,7 @@ def lookup_character():
 def edit_character(player: object):
     while True:
         print(f"---------={player.firstname} {player.surname}=---------")
-        choice = input("[R]ace, [J]obs, [I]nfo, [E]quipment, [D]one: \n").upper().strip()
+        choice = input("[R]ace, [J]obs, [I]nfo, [E]quipment, [S]pirits, [D]one: \n").upper().strip()
         if choice == "R":
             while True:
                 print("---------=Racial Classes=---------")
@@ -115,6 +122,28 @@ def edit_character(player: object):
                     player.job_edit()
                 elif choice == "D":
                     break
+        elif choice == "S":
+            print("---------=Spirits=---------")
+            while True:
+                if player.spirits:
+                    for index, name in enumerate(player.spirits):
+                        spirit=ch.character_dic[name]
+                        print(f"[{index+1}] {spirit.firstname}")
+                choice = input("[A]dd, [R]emove, [D]one: \n").upper().strip()
+                if choice == "A":
+                    spirit = input("Add Spirit with ID: ")
+                    player.spirits.append(spirit)
+                elif choice == "R":
+                    if player.spirits:
+                        choice = fs.is_int(input("Remove spirit with index: "))
+                        if 1 <= choice <= len(player.spirits):
+                            del player.spirits[choice-1]
+                        else:
+                            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Index out of bounce...")
+                    else:
+                        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} No Spirits found...")
+                elif choice == "D":
+                    break 
         elif choice == "I":
             while True:
                 print(f"---------={player.firstname} {player.surname}=---------")
@@ -136,7 +165,7 @@ def edit_character(player: object):
                             remove = fs.is_int(input("Remove nickname ID: "))
                             if 1 <= remove <= len(player.nicknames):
                                 remove = player.nicknames[remove-1]
-                                print(f"Removed {player.nicknames(remove)}")
+                                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Removed {player.nicknames[remove]}")
                                 del player.nicknames[remove]
                             break
                 elif choice == "O":
@@ -149,16 +178,18 @@ def edit_character(player: object):
                     for index, attrib in enumerate(player.attribute):
                         print(f"[{index+1}] {attrib}")
                     while True:
-                        choice = (input("A[dd], [R]emove: "))
+                        choice = (input("A[dd], [R]emove, [D]one: ")).upper()
                         if choice == "A":
-                            attribute = input("Add attribute: ").capitalize
+                            attribute = input("Add attribute: ").capitalize()
                             player.attribute.append(attribute)
                         elif choice == "R":
                             choice = fs.is_int(input("Remove attribute with index: "))
                             if 1 <= choice <= len(player.attribute):
                                 remove = player.attribute[choice-1]
-                                print(f"Removed {player.attribute(remove)}")
+                                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Removed {player.attribute(remove)}")
                                 del player.attribute[remove]
+                        elif choice == "D":
+                            break
                 elif choice == "K":
                     player.karma = fs.is_int(input("New Karma: "))
                 elif choice == "D":
@@ -180,14 +211,34 @@ def edit_character(player: object):
                     f"Ring:{player.equipment_r1}\n"
                     f"Ring:{player.equipment_r2}\n"
                     f"Bracelet:{player.equipment_br}\n"
+                    "-----------=Gold=-----------\n"
+                    f"Gold:{player.gold}/{player.silver}/{player.bronze}\n"
                     "---------=Inventory=---------\n"
                     f"{player.inventory}"
                 )
-                choice = input("[A]dd, [R]emove, [E]quip, [D]one: ").upper()
+                choice = input("[A]dd, [R]emove, [E]quip, [G]old, [D]one: ").upper()
                 if choice == "A":
                     player.equipment_add()
+                elif choice == "G":
+                    while True:
+                        print("---------=Gold=---------")
+                        choice = input("[A]dd, [R]emove, [T]ransfer: ").upper()
+                        type = input("Type [G]old, [S]ilver, [B]ronze: ").lower()
+                        amount = fs.is_int(input("Amount: "))
+                        if choice == "A":
+                            player.gold_add(type, amount)
+                            break
+                        elif choice == "R":
+                            player.gold_remove(type, amount)
+                            break
+                        elif choice == "T":
+                            opponent = ch.character_dic[str(input("Opponent ID: "))]
+                            player.gold_transfer(type, amount, opponent)
+                            break
                 elif choice == "R":
                     remove = input("Remove from [I]nventory, [E]quipment: ").upper()
+                    if remove == "Q":
+                        continue
                     while True:
                         if remove == "I":
                             remove_item = input("Remove item: ").lower()

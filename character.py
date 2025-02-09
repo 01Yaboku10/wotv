@@ -1,10 +1,13 @@
+from colorama import Fore, Style, init
 import job_classes
 import racial_classes
+import gamelogic as gl
 import item as it
 import failsafe as fs
 import saveloader as sl
 id_list = []
 character_dic = {}
+init(autoreset=True)
 
 class Character():
     def __init__(self,
@@ -18,6 +21,7 @@ class Character():
                  job_classes: list[tuple[str, int]] = None,
                  inventory: list[tuple[str, int]] = None,
                  status_effects: list[object] = None,
+                 spirits: list[int] = None,  # Character IDs
                  equipment_h: tuple[str, int] = None,
                  equipment_c: tuple[str, int] = None,
                  equipment_l: tuple[str, int] = None,
@@ -31,11 +35,15 @@ class Character():
                  equipment_r2: tuple[str, int] = None,
                  equipment_br: tuple[str, int] = None,
                  power_level: int = 0,
+                 character_type: str = None,  # e.g Player, Spirit, NPC
                  residence: str = None,
                  balance_breaker: list[str] = None,
                  occupation: str = None,
                  nicknames: list[str] = None,
                  race_type: str = None,
+                 gold: int = 0,
+                 silver: int = 0,
+                 bronze: int = 0,
                  weight: int = 0,
                  max_weight: int = 0,
                  hp: int = 0,
@@ -60,6 +68,10 @@ class Character():
                  intimidation: int = 0,
                  persuasion: int = 0,
                  performance: int = 0) -> None:
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Creating Character...")
+        
+        self.error = False
+
         self.id = id
         self.firstname = firstname.capitalize()
         self.surname = surname.capitalize()
@@ -69,6 +81,7 @@ class Character():
         self.inventory = inventory if inventory is not None else []
         self.balance_breaker = balance_breaker if balance_breaker is not None else []
         self.status_effects = status_effects if status_effects is not None else []
+        self.spirits = spirits if spirits is not None else []
         self.equipment_h = equipment_h
         self.equipment_c = equipment_c
         self.equipment_l = equipment_l
@@ -83,9 +96,14 @@ class Character():
         self.equipment_br = equipment_br
         self.power_level = power_level
         self.residence = residence
+        self.summons = []
+        self.character_type = character_type
         self.occupation = occupation
         self.nicknames = nicknames if nicknames is not None else []
         self.weight = weight
+        self.gold = gold
+        self.silver = silver
+        self.bronze = bronze
         self.max_weight = max_weight
         self.karma = self.new_karma = self.max_karma = karma
         self.race_type = race_type
@@ -131,6 +149,11 @@ class Character():
         self.attribute_check()
 
         self.power_check()
+        
+        if not self.error:
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character Creation: {Fore.GREEN}Success{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character Creation: {Fore.GREEN}Failed{Style.RESET_ALL}")
 
     def __repr__(self) -> str:
         return (
@@ -169,6 +192,8 @@ class Character():
         f"Ring:{self.equipment_r1}\n"
         f"Ring:{self.equipment_r2}\n"
         f"Bracelet:{self.equipment_br}\n"
+        "---------=Gold=---------\n"
+        f"Gold:{self.gold}/{self.silver}/{self.bronze}\n"
         "---------=Inventory=---------\n"
         f"{self.inventory}\n"
     )
@@ -188,22 +213,97 @@ class Character():
         f"Ring:{self.equipment_r1}\n"
         f"Ring:{self.equipment_r2}\n"
         f"Bracelet:{self.equipment_br}\n"
+        "---------=Gold=---------\n"
+        f"Gold:{self.gold}/{self.silver}/{self.bronze}\n"
         "---------=Inventory=---------\n"
         f"{self.inventory}\n"
         )
 
     def id_check(self):
         if self.id not in id_list:
-            print(f"[DEBUGG]: {self.firstname}'s id set to {self.id}")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} {self.firstname}'s id set to {self.id}")
         else:
-            print(f"[DEBUGG]: id:[{self.id}] already exists,", end = " ")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} id:[{self.id}] already exists,", end = " ")
             self.id = len(id_list) + 1
             print(f"Setting {self.firstname}'s id to {self.id}")
         id_list.append(self.id)
         character_dic[f"{self.id}"] = self
-        print(f"DEBUGG: {self.firstname} with id {self.id} has been added to the dictionary")
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} {self.firstname} with id {self.id} has been added to the dictionary")
+        if fs.is_attrib(self, "id"):
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} ID Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} ID Check: {Fore.RED}[FAILED]{Style.RESET_ALL}")
+            self.error = True
+
+    def gold_check(self):
+        money = self.gold*100*100 + self.silver*100 + self.bronze
+        self.gold = self.silver = self.bronze = 0
+        while money > 0:
+            if money > 10000:
+                self.gold += 1
+                money -= 10000
+            elif money > 100:
+                self.silver += 1
+                money -= 100
+            else:
+                self.bronze += money
+                money -= money
+
+    def gold_add(self, type: str, amount: int):
+        if type == "g":
+            self.gold += amount
+        elif type == "s":
+            self.silver += amount
+        elif type == "b":
+            self.bronze += amount
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Incorrect type...")
+            return
+        self.gold_check()
+
+    def gold_remove(self, type: str, amount: int):
+        if type == "g":
+            if self.gold >= amount:
+                self.gold -= amount
+            else:
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not enough Gold...")
+        elif type == "s":
+            if self.silver >= amount:
+                self.silver -= amount
+            else:
+                if self.gold > 0:
+                    self.gold -= 1
+                    self.silver += 100
+                    self.silver -= amount
+                else:
+                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not enough Silver or Gold...")
+        elif type == "b":
+            if self.bronze >= amount:
+                self.bronze -= amount
+            else:
+                if self.silver > 0:
+                    self.silver -= 1
+                    self.bronze += 100
+                    self.bronze -= amount
+                elif self.gold > 0:
+                    self.gold -= 1
+                    self.bronze += 10000
+                    self.bronze -= amount
+                else:
+                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not enough Bronze, Silver or Gold...")
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Incorrect type...")
+            return
+        self.gold_check()
+    
+    def gold_transfer(self, type: str, amount: int, opponent: object):
+        self.gold_remove(type, amount)
+        opponent.gold_add(type, amount)
     
     def attribute_check(self):
+        attributes = gl.SKILLS
+        checked = []
+        failed = []
         self.athletics += round((((self.phyatk+self.finess)/2)*0.1))
         self.acrobatics += round((((self.agility+self.finess+self.sp)/3)*0.1))
         self.stealth += round((((self.agility+self.finess)/2)*0.1))
@@ -216,6 +316,16 @@ class Character():
         self.persuasion += round((((self.phyatk+self.finess+self.magatk)/3)*0.1))
         self.performance += round((((self.mp+self.agility+self.finess+self.special)/4)*0.1))
         self.max_weight = round(((self.phyatk+self.sp)/2)+(self.athletics*2))
+        for attribute in attributes:
+            if fs.is_attrib(self, attribute) and fs.is_type(getattr(self, attribute), int):
+                checked.append(attribute)
+            else:
+                failed.append(attribute)
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Error detected during Attribute Check: {Fore.RED}[{attribute}]{Style.RESET_ALL}")
+        if not failed:
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Attribute Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Attribute Check: {Fore.RED}[FAILED]{Style.RESET_ALL}")
 
     def power_check(self):
         self.power_level = 0
@@ -229,8 +339,11 @@ class Character():
             self.power_level += job.power_level*level
         self.power_level += (self.hp+self.mp+self.phyatk+self.phydef+self.agility+self.finess+self.magdef+self.magatk+self.resistance+self.special+ \
                             10*(self.athletics+self.acrobatics+self.stealth+self.sleight+self.deception+self.perception+self.performance+self.persuasion+self.insight+self.investigation+self.intimidation))
-        print(f"Character [ID:{self.id}] {self.firstname}'s power level set to {self.power_level}")
-
+        if fs.is_attrib(self, "power_level"):
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Power Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Power Check: {Fore.GREEN}[FAILED]{Style.RESET_ALL}")
+    
     def equipment_check(self):
         #print("DEBUGG: RUNNING EQUIP CHECK")
         equipments = ["equipment_h", "equipment_c", "equipment_l", "equipment_s", "equipment_g", "equipment_be", "equipment_rh", "equipment_lh", "equipment_n", "equipment_r1", "equipment_r2", "equipment_br"]
@@ -314,7 +427,7 @@ class Character():
         #  Inventory Weight
         for i in self.inventory:
             name, amount = i
-            if fs.is_tuple(name):
+            if fs.is_type(name, tuple):
                 item_name, level = name
                 item = it.item_list(item_name, level)
             else:
@@ -414,6 +527,12 @@ class Character():
             self.race_type = "demi-human"
             return
         self.race_type = "humanoid"
+
+        if fs.is_attrib(self, "race_type"):
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Race Type Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Race Type Check: {Fore.RED}[FAILED]{Style.RESET_ALL}")
+            self.error = True
     
     def armor_class_check(self):
         if "heavy" in self.armor_classes:
@@ -428,7 +547,13 @@ class Character():
         self.armor_class = "None"
         for index, armor in enumerate(self.armor_classes):
             del self.armor_classes[index]
-            print(f"DEBUGG: Deleted armor class {index}")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL}: Deleted armor class {index}")
+        
+        if fs.is_attrib(self, "armor_class"):
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Armor Class Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Armor Class Check: {Fore.RED}[FAILED]{Style.RESET_ALL}")
+            self.error = True
               
     def update_job(self):
         self.update_race()
@@ -462,6 +587,12 @@ class Character():
             self.armor_classes.append(job.armor_class)
         self.armor_class_check()
 
+        if fs.is_attrib(self, "job_classes") and fs.is_type(self.racial_classes, list):
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Job Class Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Job Classs Check: {Fore.RED}[FAILED]{Style.RESET_ALL}")
+            self.error = True
+
     def update_race(self):
         self.race_type_list.clear()
         self.hp, self.mp, self.sp, self.level, self.phyatk, self.phydef, self.agility, self.finess, self.magatk, self.magdef, self.resistance, self.special, self.athletics, self.acrobatics, self.stealth, self.sleight, self.investigation, self.insight, self.perception, self.deception, self.intimidation, self.persuasion, self.performance = (0,) * 23
@@ -493,16 +624,25 @@ class Character():
             self.performance += race.performance*level
 
             self.race_type_list.append(race.type)
+
+        if fs.is_attrib(self, "racial_classes") and fs.is_type(self.racial_classes, list):
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Race Class Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Race Class Check: {Fore.RED}[FAILED]{Style.RESET_ALL}")
+            self.error = True
     
     def race_remove(self):
         if len(self.racial_classes) != 1:
             for index, race in enumerate(self.racial_classes):
                 print(f"[{index+1}] {race}")
             remove = input("Remove race class [index]: ")
-            print(f"DEBUGG: Removing {self.racial_classes(index-1)}")
-            del self.racial_classes[remove-1]
+            if remove == "q":
+                return
+            if 1 <= remove <=len(self.racial_classes):
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Removing {self.racial_classes(index-1)}")
+                del self.racial_classes[int(remove)-1]
         else:
-            print("ERROR: Race class cannot be null")
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Race class cannot be null")
             self.update_race()
 
     def race_add(self):
@@ -511,7 +651,7 @@ class Character():
             return
         level = fs.is_int(input("Race level: "))
         self.racial_classes.append((race, level))
-        print(f"DEBUGG: Added level {level} {race} to {self.firstname}")
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Added level {level} {race} to {self.firstname}")
         self.update_race()
     
     def race_edit(self):
@@ -524,20 +664,20 @@ class Character():
                 level = fs.is_int(input("New level: "))
                 del self.racial_classes[choice-1]
                 self.racial_classes.append((race_name, level))
-                print(f"DEBUGG: {race}'s level has been changed to {level}")
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} {race}'s level has been changed to {level}")
                 self.update_race()
                 return
             else:
-                print("ERROR: Not in range")
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not in range")
     
     def job_remove(self):
         if len(self.job_classes) == 0:
-            print("ERROR: Character has no job classes")
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character has no job classes")
             return
         for index, job in enumerate(self.job_classes):
             print(f"[{index+1}] {job}")
         remove = fs.is_int(input("Remove job class [index]: "))
-        print(f"DEBUGG: Removing {self.job_classes[remove-1]}")
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Removing {self.job_classes[remove-1]}")
         del self.job_classes[remove-1]
 
     def job_add(self):
@@ -546,12 +686,12 @@ class Character():
             return
         level = fs.is_int(input("Job level: "))
         self.job_classes.append((job, level))
-        print(f"DEBUGG: Added level {level} {job} to {self.firstname}")
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Added level {level} {job} to {self.firstname}")
         self.update_job()
 
     def job_edit(self):
         if len(self.job_classes) == 0:
-            print("ERROR: Character has no job classes")
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character has no job classes")
             return
         for index, job in enumerate(self.job_classes):
             print(f"[{index+1}] {job}")
@@ -562,17 +702,21 @@ class Character():
                 level = fs.is_int(input("New level: "))
                 del self.job_classes[choice-1]
                 self.job_classes.append((job_name, level))
-                print(f"DEBUGG: {job}'s level has been changed to {level}")
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} {job}'s level has been changed to {level}")
                 self.update_job()
                 return
             else:
-                print("ERROR: Not in range")
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not in range")
 
     def equipment_add(self):
         self.equipment_reset()
         print("-------------------------")
         add_item: str = input("Add item: ").lower()
+        if add_item == "Q":
+            self.equipment_check()
+            return
         if not fs.is_item(add_item):
+            self.equipment_check()
             return
         level: int = fs.is_int(input("Item Level [1-5]: "))
         equipment: object = it.item_list(add_item, level)
@@ -616,6 +760,8 @@ class Character():
                             setattr(self, slot_unequip, None)
                         break
                 break
+            elif choice == "Q":
+                break
         self.equipment_check()
     
     def equipment_equip(self, add_item, level):
@@ -635,8 +781,10 @@ class Character():
                     setattr(self, equip_slot, (add_item, level))
                 print(f"{add_item} added to {self.firstname} {self.surname}")
                 break
+            elif add_to == "q":
+                break
             else:
-                print("ERROR: Invalid slot")
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Invalid slot")
 
     def inventory_equip(self):
         self.equipment_reset()
@@ -644,7 +792,7 @@ class Character():
 
         for item in self.inventory:
             item_name, amount = item
-            if not fs.is_tuple(item_name):
+            if not fs.is_type(item_name, tuple):
                 continue
             name, level = item_name
             got_item = it.item_list(name, level)
@@ -662,16 +810,19 @@ class Character():
             print(f"{[index+1]} {got_item.name}")
 
         while True:
-            equip: int = fs.is_int(input("Equip ID: "))
-            if equip <= len(equipable_items) and equip > 0:
+            equip = input("Equip ID: ")
+            if int(equip) <= len(equipable_items) and int(equip) > 0:
                 break
+            elif equip == "q":
+                self.equipment_check()
+                return
             
-        item: tuple[str, int] = equipable_items[equip-1]
+        item: tuple[str, int] = equipable_items[int(equip)-1]
         name, level = item
         self.equipment_equip(name, level)
         for index, item in enumerate(self.inventory):
             item_name, item_amount = item
-            if not fs.is_tuple(item_name):
+            if not fs.is_type(item_name, tuple):
                 continue
             item_name, item_level = item_name
             if item_name == name and level == item_level:
@@ -702,7 +853,7 @@ class Character():
         if def_lvl == 0:
             for item in self.inventory:
                 name, amount = item
-                if fs.is_tuple(name):
+                if fs.is_type(name, tuple):
                     name, level = name
                     if name == remove:
                         remove_list.append(item)
@@ -712,15 +863,17 @@ class Character():
                     name, level = name
                     item_object = it.item_list(name, level)
                     print(f"[{index+1}] {item_object.name}")
-                remove = fs.is_int(input("Remove item with ID: "))
-                remove = remove_list[remove-1]
+                remove = input("Remove item with ID: ")
+                if remove == "q":
+                    return
+                remove = remove_list[int(remove)-1]
                 remove_name, foo = remove
-                if fs.is_tuple(remove_name):
+                if fs.is_type(remove_name, tuple):
                     remove_name, remove_level = remove_name
             else:
                 for index, item in enumerate(self.inventory):
                     item_name, item_amount = item
-                    if fs.is_tuple(item_name):
+                    if fs.is_type(item_name, tuple):
                         item_name, item_level = item_name
                         if item_name == remove:
                             remove_name = item_name
@@ -734,7 +887,7 @@ class Character():
         #  Remove Selected Item
         for index, item in enumerate(self.inventory):
             item_name, item_amount = item
-            if fs.is_tuple(item_name):
+            if fs.is_type(item_name, tuple):
                 item_name, item_level = item_name
                 if len(remove_list) == 1:
                     remove_level = item_level
@@ -765,7 +918,7 @@ class Character():
         #  Find consumables
         for i in self.inventory:
             name, amount = i
-            if fs.is_tuple(name):
+            if fs.is_type(name, tuple):
                 name, level = name
             else:
                 level = 2
@@ -794,10 +947,7 @@ class Character():
                     self.inventory_remove(con_name, consume_amount, consumable.level)
                     break
 
-    
-
     def status_apply(self, effect: object, spell_effect: int):
-        print(f"Applied {effect.name}")
         if effect.is_effect:
             effect.spell_effect=spell_effect
         effect.apply_bonus(self)

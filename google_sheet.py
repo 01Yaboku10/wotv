@@ -1,10 +1,15 @@
 # pip install gspread google-auth
 # pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+# pip install tqdm
 
 
 import gspread
+from colorama import Fore, Style, init
+from tqdm import tqdm
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+
+init(autoreset=True)
 
 def google_write(player_id, cell, data, dir="h"):
     # Define the scope
@@ -30,7 +35,7 @@ def google_write(player_id, cell, data, dir="h"):
     # Write data to cell
     sheet.update(values=values, range_name=cell)
 
-def create_matrix(race_classes: list, race_levels, job_classes, job_levels, inventory_names, inventory_amount, attributes, nicknames):
+def create_matrix(race_classes: list, race_levels, job_classes, job_levels, inventory_names, inventory_amount, attributes, nicknames, gold):
     #max_len = max(len(race_classes), len(job_classes), len(inventory_names), len(attributes), len(nicknames))
     max_len = 20
 
@@ -45,6 +50,7 @@ def create_matrix(race_classes: list, race_levels, job_classes, job_levels, inve
     inventory_amount = pad_list(inventory_amount, max_len)
     attributes = pad_list(attributes, max_len)
     nicknames = pad_list(nicknames, max_len)
+    gold = pad_list(gold, max_len)
 
     matrix = []
     for i in range(max_len):
@@ -58,13 +64,14 @@ def create_matrix(race_classes: list, race_levels, job_classes, job_levels, inve
             inventory_names[i],
             inventory_amount[i],
             attributes[i],
-            nicknames[i]
+            nicknames[i],
+            gold[i]
         ]
         matrix.append(row)
     
     return matrix
 
-def google_batch_update(player_id, update_requests):
+def google_batch_update(player_id, update_requests, batch_size=10):
     # Define the scope
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
@@ -78,4 +85,14 @@ def google_batch_update(player_id, update_requests):
     sheet = client.open(player_id).worksheet("Code")
 
     # Perform the batch update
-    sheet.batch_update(update_requests)
+    with tqdm(total=len(update_requests), desc=f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Updating Google Sheet", ncols=100) as pbar:
+        # Split the update requests into batches and apply them
+        for i in range(0, len(update_requests), batch_size):
+            # Extract a batch of update requests
+            batch = update_requests[i:i+batch_size]
+
+            # Perform the batch update
+            sheet.batch_update(batch)
+
+            # Update the progress bar by the number of items processed in this batch
+            pbar.update(len(batch))

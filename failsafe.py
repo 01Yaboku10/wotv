@@ -1,8 +1,11 @@
+from colorama import Fore, Style, init
 import racial_classes as rc
 import job_classes as jc
 import character as ch
 import spell as sp
 import item as it
+
+init(autoreset=True)
 
 def is_int(prompt: str):
     while True:
@@ -12,8 +15,8 @@ def is_int(prompt: str):
             print("Invalid Input! Please use a valid integer")
             prompt = input("New value: ")
 
-def is_tuple(input) -> bool:
-    if isinstance(input, tuple):
+def is_type(input, type: type) -> bool:
+    if isinstance(input, type):
         return True
     else:
         return False
@@ -28,28 +31,28 @@ def is_race(race: str) -> bool:
     try:
         return rc.race_list(race, 1)
     except KeyError:
-        print("Race does not exist")
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Race does not exist")
         return False
     
 def is_spell(spell: str) -> bool:
     try:
         return sp.spell_list(spell)
     except KeyError:
-        print("Spell does not exist")
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Spell does not exist")
         return False
 
 def is_job(job: str) -> bool:
     try:
         return jc.job_list(job, 1)
     except KeyError:
-        print("Job does not exist")
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Job does not exist")
         return False
     
 def is_item(item: str) -> bool:
     try:
         return it.item_list(item, 1)
     except KeyError:
-        print("Item does not exist")
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Item does not exist")
         return False
 
 def is_slot_taken(player: object, slot: str) -> bool:

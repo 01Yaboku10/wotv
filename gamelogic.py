@@ -1,7 +1,12 @@
 import os
+from colorama import Fore, Style, init
 import character as ch
 import failsafe as fs
 import random
+import copy
+
+init(autoreset=True)
+SKILLS = ["athletics", "acrobatics", "stealth", "sleight", "investigation", "insight", "perception", "deception", "intimidation", "persuasion", "performance", "max_weight"]
 
 def log_clear():
     if os.name == "nt":
@@ -19,7 +24,7 @@ def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
         if choice == "D":
             break
         if not choice.isdigit():
-            print("ERROR: Not integer")
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not integer")
             continue
         choice = int(choice)
         if 1 <= choice <= len(players):
@@ -31,7 +36,7 @@ def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
         if choice == "D":
             break
         if not choice.isdigit():
-            print("ERROR: Not integer")
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not integer")
             continue
         choice = int(choice)
         if 1 <= choice <= len(players):
@@ -51,13 +56,13 @@ def player_assign(players: list[object] = None) -> tuple[list[int], list[object]
             assigned_players.append(pl.id)
             player_objects.append(pl)
             player_prefixes[pl.prefix] = pl
-
+    
     for pla in ch.character_dic:
         pla = int(pla)
         if pla not in assigned_players:
             new_players.append(str(pla))
 
-    for index, play in enumerate(new_players):
+    for index, play in enumerate(ch.character_dic):
         player = ch.character_dic.get(play)
         print(f"[{index+1}] ID:{player.id}, {player.firstname}")
 
@@ -66,25 +71,36 @@ def player_assign(players: list[object] = None) -> tuple[list[int], list[object]
         if choice == "D":
             break
         if not choice.isdigit():
-            print("ERROR: Not integer")
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not integer")
             return
-        choice = int(choice)
-        if 1 <= choice <= len(new_players):
-            player: int = new_players[choice-1]
-            assigned_player: object = ch.character_dic.get(player)
+        if 1 <= int(choice) <= len(list(ch.character_dic.keys())):
+            player: object = ch.character_dic[list(ch.character_dic.keys())[int(choice)-1]]
+            if player.id in assigned_players:
+                assigned_player: object = copy.deepcopy(player)
+            else:
+                assigned_player: object = player
             if assigned_player.id in assigned_players:
-                print("ERROR: Player already registered")
-                continue
+                while True:
+                    multi = input(f"{Fore.RED}[WARNING]{Style.RESET_ALL} Player is already registered, register multiple? [Y/N]: ").upper()
+                    if multi == "N":
+                        break
+                    elif multi == "Y":
+                        break
+                if multi == "N":
+                    continue
             while True:
                 prefix = input("Assign board piece: ").upper()
                 if prefix in player_prefixes:
-                    print("ERROR: Prefix already taken.")
+                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Prefix already taken.")
                     continue
                 assigned_player.prefix = prefix
-                assigned_players.append(assigned_player.id)
+                if assigned_player.id not in assigned_players:
+                    assigned_players.append(assigned_player.id)
                 player_objects.append(assigned_player)
                 player_prefixes[prefix] = assigned_player
                 break
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Key out of bounce")
 
     return assigned_players, player_objects, player_prefixes
 

@@ -132,6 +132,8 @@ def item_list(item_name: str, level: int):
         # Foods
         "apple": Item("Apple", "item", 2, weight=0.1),
         
+        # Scrolls
+
         # Potions
         "mana_potion": Item("Potion of Mana", "consumable", level, weight=0.5, mp=25, resistance=-10),
         "stamina_potion": Item("Potion of Stamina", "consumable", level, weight=0.5, sp=25, resistance=-10),

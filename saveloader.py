@@ -1,17 +1,20 @@
 import os
+from colorama import Fore, Style, init
 import character as ch
 import failsafe as fs
 import google_sheet as gs
 import item as it
 
+init(autoreset=True)
+
 def create_savefolder(directory):
     if not os.path.exists(directory):
-        print("DEBUGG: Creating new saves folder...")
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Creating new saves folder...")
         os.makedirs(directory)
         if os.path.exists(directory):
-            print(f"DEBUGG: New directory called {directory} has been created")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} New directory called {directory} has been created")
         else:
-            print(f"ERROR: New directory {directory} could not be created.")
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} New directory {directory} could not be created.")
 
 def save_all(directory: str, players: list[object]):
     for player in players:
@@ -35,11 +38,13 @@ def save_character(directory: str, character: object):
                             f"//Firstname:{c.firstname}"
                             f"//Surname:{c.surname}"
                             f"//Nicknames:{c.nicknames}"
+                            f"//Type:{c.character_type}"
                             f"//RaceType:{c.race_type}"
                             f"//Occupation:{c.occupation}"
                             f"//Residence:{c.residence}"
                             f"//Attribute:{c.attribute}"
                             f"//BalanceBreaker:{c.attribute}"
+                            f"//Spirits:{c.spirits}"
                             f"//Races:{c.racial_classes}"
                             f"//Jobs:{c.job_classes}"
                             f"//Power:{c.power_level}"
@@ -68,9 +73,10 @@ def save_character(directory: str, character: object):
                             f"//Persuasion:{c.persuasion}"
                             f"//Performance:{c.performance}"
                             f"//Weight:({c.weight}, {c.max_weight})"
+                            f"//Gold:({c.gold}, {c.silver}, {c.bronze})"
                             f"//Inventory:{c.inventory}"
                             f"//Equipment:({c.equipment_h}, {c.equipment_c}, {c.equipment_l}, {c.equipment_s}, {c.equipment_g}, {c.equipment_be}, {c.equipment_rh}, {c.equipment_lh}, {c.equipment_n}, {c.equipment_r1}, {c.equipment_r2}, {c.equipment_br})\n")
-                print("DEBUGG: Character Updated")
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character Updated")
                 character_found = True
             else:
                 save.write(line)
@@ -79,11 +85,13 @@ def save_character(directory: str, character: object):
                             f"//Firstname:{c.firstname}"
                             f"//Surname:{c.surname}"
                             f"//Nicknames:{c.nicknames}"
+                            f"//Type:{c.character_type}"
                             f"//RaceType:{c.race_type}"
                             f"//Occupation:{c.occupation}"
                             f"//Residence:{c.residence}"
                             f"//Attribute:{c.attribute}"
                             f"//BalanceBreaker:{c.attribute}"
+                            f"//Spirits:{c.spirits}"
                             f"//Races:{c.racial_classes}"
                             f"//Jobs:{c.job_classes}"
                             f"//Power:{c.power_level}"
@@ -112,9 +120,10 @@ def save_character(directory: str, character: object):
                             f"//Persuasion:{c.persuasion}"
                             f"//Performance:{c.performance}"
                             f"//Weight:({c.weight}, {c.max_weight})"
+                            f"//Gold:({c.gold}, {c.silver}, {c.bronze})"
                             f"//Inventory:{c.inventory}"
                             f"//Equipment:({c.equipment_h}, {c.equipment_c}, {c.equipment_l}, {c.equipment_s}, {c.equipment_g}, {c.equipment_be}, {c.equipment_rh}, {c.equipment_lh}, {c.equipment_n}, {c.equipment_r1}, {c.equipment_r2}, {c.equipment_br})\n")
-    print(f"DEBUGG: Character {c.id} saved to {directory}.")
+    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character {c.id} saved to {directory}.")
 
 def load_characters(directory: str):
     create_savefolder(directory)
@@ -129,11 +138,13 @@ def load_characters(directory: str):
         "Firstname": "firstname",
         "Surname": "surname",
         "Nicknames": "nicknames",
+        "Spirits": "spirits",
         "Attribute": "attribute",
         "Races": "racial_classes",
         "Jobs": "job_classes",
         "Power": "power_level",
         "Karma": "karma",
+        "Type": "character_type",
         "Religion": "religion",
         "BalanceBreaker": "balance_breaker",
         "Residence": "residence",
@@ -142,6 +153,7 @@ def load_characters(directory: str):
         "Inventory": "inventory",
         "Equipment": "equipment",
         "Weight": "weight",
+        "Gold": "gold",
         "HP": "hp",
         "MP": "mp",
         "SP": "sp",
@@ -172,17 +184,19 @@ def load_characters(directory: str):
                 'id': None,
                 'firstname': None,
                 'surname': None,
-                'nicknames': None,
+                'nicknames': [],
                 'attribute': [],
                 'racial_classes': [],
                 'job_classes': [],
                 'balance_breaker': [],
+                'spirits': [],
                 'power_level': 0,
                 'residence': None,
                 'race_type': None,
                 'occupation': None,
                 'karma': 0,
                 'religion': None,
+                'character_type': None,
                 'inventory': [],
                 'equipment_h': None,
                 'equipment_c': None,
@@ -197,6 +211,9 @@ def load_characters(directory: str):
                 'equipment_r2': None,
                 'equipment_br': None,
                 'weight': 0,
+                'gold': 0,
+                'silver': 0,
+                'bronze': 0,
                 'max_weight': 0,
                 'hp': 0,
                 'mp': 0,
@@ -237,14 +254,24 @@ def load_characters(directory: str):
                         # Assign the value, converting to appropriate types
                         if key in ["Races", "Jobs", "Inventory"]:
                             character_data[var_name] = eval(value)  # List of tuples
-                        elif key == "Attribute":
+                        elif key in ["Attribute", "Nicknames", "Spirits"]:
                             try:
-                                character_data[var_name] = eval(value)
+                                # Try to evaluate value as a list
+                                evaluated_value = eval(value)
+                                # If evaluated value is a list but is empty or just whitespace, treat it as an empty list
+                                if isinstance(evaluated_value, list) and not evaluated_value:
+                                    character_data[var_name] = []
+                                else:
+                                    character_data[var_name] = evaluated_value
                             except:
-                                character_data[var_name] = value.split(",")
+                                # If eval fails, treat as a comma-separated string and split into a list
+                                character_data[var_name] = [item.strip() for item in value.split(",") if item.strip()]
                         elif key == "Weight":
                             weight = eval(value)
                             character_data['weight'], character_data['max_weight'] = weight
+                        elif key == "Gold":
+                            gold = eval(value)
+                            character_data['gold'], character_data['silver'], character_data['bronze'] = gold
                         elif key == "Equipment":
                             equipment_data = eval(value)
                             for slot, equipment in zip(equipment_ids, equipment_data):
@@ -262,6 +289,7 @@ def load_characters(directory: str):
                 firstname=character_data['firstname'],
                 surname=character_data['surname'],
                 nicknames=character_data['nicknames'],
+                spirits=character_data['spirits'],
                 attribute=character_data['attribute'],
                 racial_classes=character_data['racial_classes'],
                 job_classes=character_data['job_classes'],
@@ -270,6 +298,7 @@ def load_characters(directory: str):
                 occupation=character_data['occupation'],
                 race_type=character_data['race_type'],
                 karma=character_data['karma'],
+                character_type=character_data['character_type'],
                 balance_breaker=character_data['balance_breaker'],
                 religion=character_data['religion'],
                 inventory=character_data['inventory'],
@@ -286,6 +315,9 @@ def load_characters(directory: str):
                 equipment_r2=character_data['equipment_r2'],
                 equipment_br=character_data['equipment_br'],
                 weight=character_data['weight'],
+                gold=character_data['gold'],
+                silver=character_data['silver'],
+                bronze=character_data['bronze'],
                 max_weight=character_data['max_weight'],
                 hp=character_data['hp'],
                 mp=character_data['mp'],
@@ -308,10 +340,10 @@ def load_characters(directory: str):
                 performance=character_data['performance']
             )
 
-def update_sheet(p: object):
-    print(f"Updating sheet for {p.firstname}...")
+def update_sheet(player: object):
+    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Updating sheet for {player.firstname}...")
 
-    sheet = f"wotv player {p.id}"
+    sheet = f"wotv player {player.id}"
     rcn = []
     rcl = []
     jcn = []
@@ -320,21 +352,22 @@ def update_sheet(p: object):
     inva = []
     att = []
     nick = []
+    gold = []
 
-    if p.racial_classes:
-        for i in p.racial_classes:
+    if player.racial_classes:
+        for i in player.racial_classes:
             name, level = i
             rcn.append(name)
             rcl.append(level)
-    if p.job_classes:
-        for i in p.job_classes:
+    if player.job_classes:
+        for i in player.job_classes:
             name, level = i
             jcn.append(name)
             jcl.append(level)
-    if p.inventory:
-        for i in p.inventory:
+    if player.inventory:
+        for i in player.inventory:
             name, amount = i
-            if fs.is_tuple(name):
+            if fs.is_type(name, tuple):
                 name, level = name
                 item = it.item_list(name, level)
                 name = item.name
@@ -344,19 +377,22 @@ def update_sheet(p: object):
                 name = item.name
                 invn.append(name)
             inva.append(amount)
-    if p.attribute:
-        for i in p.attribute:
+    if player.attribute:
+        for i in player.attribute:
             att.append(i)
-    if p.nicknames:
-        for i in p.nicknames:
+    if player.nicknames:
+        for i in player.nicknames:
             nick.append(i)
+    gold.append(player.gold)
+    gold.append(player.silver)
+    gold.append(player.bronze)
 
     # Equipment
     equipment_ids = ["h", "c", "l", "s", "g", "be", "rh", "lh", "n", "r1", "r2", "br"]
     equip_data = []
     for i in equipment_ids:
         equip_name = f"equipment_{i}"
-        equipment = getattr(p, equip_name, None)
+        equipment = getattr(player, equip_name, None)
         if equipment is not None:
             equip_name, equip_level = equipment
             eq = it.item_list(equip_name, equip_level)
@@ -367,25 +403,26 @@ def update_sheet(p: object):
 
     # Effects
     status_effects = []
-    if p.status_effects:
-        for e in p.status_effects:
+    if player.status_effects:
+        for e in player.status_effects:
             status_effects.append([e.name, e.new_hp, e.new_mp, e.new_sp, e.new_phyatk, e.new_phydef, e.new_agility, e.new_finess, e.new_magatk, e.new_magdef, e.new_resistance, e.new_special, e.new_athletics, e.new_acrobatics, e.new_stealth, e.new_sleight, e.new_investigation, e.new_insight, e.new_perception, e.new_deception, e.new_intimidation, e.new_persuasion, e.new_performance, e.time_left])
     else:
         for i in range(10):
             status_effects.append(["", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
-    data = gs.create_matrix(rcn, rcl, jcn, jcl, invn, inva, att, nick)
+    data = gs.create_matrix(rcn, rcl, jcn, jcl, invn, inva, att, nick, gold)
 
+    print(f"New HP: {player.new_hp}")
     update_data = [
         {"range": "A2:V5", "values": [
-            [p.hp, p.mp, p.sp, p.phyatk, p.phydef, p.agility, p.finess, p.magatk, p.magdef, p.resistance, p.special, p.athletics, p.acrobatics, p.stealth, p.sleight, p.investigation, p.insight, p.perception, p.deception, p.intimidation, p.persuasion, p.performance],
-            [p.new_hp, p.new_mp, p.new_sp, p.new_phyatk, p.new_phydef, p.new_agility, p.new_finess, p.new_magatk, p.new_magdef, p.new_resistance, p.new_special, p.new_athletics, p.new_acrobatics, p.new_stealth, p.new_sleight, p.new_investigation, p.new_insight, p.new_perception, p.new_deception, p.new_intimidation, p.new_persuasion, p.new_performance],
-            [p.max_hp, p.max_mp, p.max_sp, p.max_phyatk, p.max_phydef, p.max_agility, p.max_finess, p.max_magatk, p.max_magdef, p.max_resistance, p.max_special, p.max_athletics, p.max_acrobatics, p.max_stealth, p.max_sleight, p.max_investigation, p.max_insight, p.max_perception, p.max_deception, p.max_intimidation, p.max_persuasion, p.max_performance]
+            [player.hp, player.mp, player.sp, player.phyatk, player.phydef, player.agility, player.finess, player.magatk, player.magdef, player.resistance, player.special, player.athletics, player.acrobatics, player.stealth, player.sleight, player.investigation, player.insight, player.perception, player.deception, player.intimidation, player.persuasion, player.performance],
+            [player.new_hp, player.new_mp, player.new_sp, player.new_phyatk, player.new_phydef, player.new_agility, player.new_finess, player.new_magatk, player.new_magdef, player.new_resistance, player.new_special, player.new_athletics, player.new_acrobatics, player.new_stealth, player.new_sleight, player.new_investigation, player.new_insight, player.new_perception, player.new_deception, player.new_intimidation, player.new_persuasion, player.new_performance],
+            [player.max_hp, player.max_mp, player.max_sp, player.max_phyatk, player.max_phydef, player.max_agility, player.max_finess, player.max_magatk, player.max_magdef, player.max_resistance, player.max_special, player.max_athletics, player.max_acrobatics, player.max_stealth, player.max_sleight, player.max_investigation, player.max_insight, player.max_perception, player.max_deception, player.max_intimidation, player.max_persuasion, player.max_performance]
         ]},
         {"range": "A6:M6", "values": [
-            [p.id, p.firstname, p.surname, p.karma, p.religion, p.weight, p.max_weight, p.power_level, p.armor_class, p.race_type, p.occupation, p.residence, p.balance_breaker]
+            [player.id, player.firstname, player.surname, player.karma, player.religion, player.weight, player.max_weight, player.power_level, player.armor_class, player.race_type, player.occupation, player.residence, player.balance_breaker]
         ]},
-        {"range": "O6:X39", "values": data},
+        {"range": "O6:Y39", "values": data},
         {"range": "B41:X52", "values": equip_data},
         {"range": "B54:Y70", "values": status_effects}
     ]
@@ -402,4 +439,13 @@ def update_sheet(p: object):
     # Perform batch update
     gs.google_batch_update(sheet, update_requests)
 
-    print("Update Complete")
+    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Update Complete")
+
+
+def load_spirits(players: list[object]):
+    for p in players:
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Uploading Spirits for {p.prefix}...")
+        for spirit in p.spirits:
+            for attrib in spirit.attribute:
+                p.attribute.append(attrib)
+    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Upload Spirits: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
