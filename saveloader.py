@@ -4,6 +4,7 @@ import character as ch
 import failsafe as fs
 import google_sheet as gs
 import item as it
+import character as ch
 
 init(autoreset=True)
 
@@ -179,6 +180,9 @@ def load_characters(directory: str):
 
     with open(file_path, "r", encoding="utf-8") as file:
         for line in file:
+            if line.startswith("*"):
+                continue
+
             # Initialize a dictionary to store character attributes
             character_data = {
                 'id': None,
@@ -354,6 +358,8 @@ def update_sheet(player: object):
     nick = []
     gold = []
 
+
+
     if player.racial_classes:
         for i in player.racial_classes:
             name, level = i
@@ -412,7 +418,6 @@ def update_sheet(player: object):
 
     data = gs.create_matrix(rcn, rcl, jcn, jcl, invn, inva, att, nick, gold)
 
-    print(f"New HP: {player.new_hp}")
     update_data = [
         {"range": "A2:V5", "values": [
             [player.hp, player.mp, player.sp, player.phyatk, player.phydef, player.agility, player.finess, player.magatk, player.magdef, player.resistance, player.special, player.athletics, player.acrobatics, player.stealth, player.sleight, player.investigation, player.insight, player.perception, player.deception, player.intimidation, player.persuasion, player.performance],
@@ -439,13 +444,23 @@ def update_sheet(player: object):
     # Perform batch update
     gs.google_batch_update(sheet, update_requests)
 
-    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Update Complete")
 
-
-def load_spirits(players: list[object]):
+def load_spirits(players: list[object]) -> list[object]:
+    summons = []
     for p in players:
         print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Uploading Spirits for {p.prefix}...")
         for spirit in p.spirits:
             for attrib in spirit.attribute:
                 p.attribute.append(attrib)
+            summon = ch.character_dic[str(spirit)]
+            summons.append(summon)
     print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Upload Spirits: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
+    return summons
+
+def load_summons() -> list[object]:
+    summons = []
+    for play in ch.character_dic:
+        player: object = ch.character_dic.get(play)
+        if player.character_type == "summon":
+            summons.append(player)
+    return summons

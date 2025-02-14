@@ -8,6 +8,7 @@ from colorama import Fore, Style, init
 from tqdm import tqdm
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+import failsafe as fs
 
 init(autoreset=True)
 
@@ -78,6 +79,10 @@ def google_batch_update(player_id, update_requests, batch_size=10):
     # Add credentials to the account
     creds = Credentials.from_service_account_file("C:\\Users\\Yaboku\\Pictures\\rpg\\Game\\Python\\wotv-main\\wotv-448920-89d48030bb09.json", scopes=scope)
 
+    if not fs.is_sheet(creds, player_id):
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Update skipped for '{player_id}'")
+        return
+
     # Authorize the client
     client = gspread.authorize(creds)
 
@@ -96,3 +101,5 @@ def google_batch_update(player_id, update_requests, batch_size=10):
 
             # Update the progress bar by the number of items processed in this batch
             pbar.update(len(batch))
+    
+    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Update Complete")

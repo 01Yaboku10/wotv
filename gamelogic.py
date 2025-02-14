@@ -7,6 +7,7 @@ import copy
 
 init(autoreset=True)
 SKILLS = ["athletics", "acrobatics", "stealth", "sleight", "investigation", "insight", "perception", "deception", "intimidation", "persuasion", "performance", "max_weight"]
+STATS = ["hp", "mp", "sp", "phyatk", "phydef", "agility", "finess", "magatk", "magdef", "resistance", "special"]
 
 def log_clear():
     if os.name == "nt":
@@ -16,7 +17,11 @@ def log_clear():
 
 def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
     print("---------=Assign Teams=---------")
-    for index, character in enumerate(players):
+    character_list = []
+    for character in players:
+        if character.team is None:
+            character_list.append(character)
+    for index, character in enumerate(character_list):
         print(f"[{index+1}] ID:{character.id} {character.firstname}")
     print("--=Assign players for Team 1=--")
     while True:
@@ -50,29 +55,32 @@ def player_assign(players: list[object] = None) -> tuple[list[int], list[object]
     player_prefixes = {}
     new_players = []
 
-    # Check for already existing players
+    #  Check for already existing players
     if players is not None:
         for pl in players:
             assigned_players.append(pl.id)
             player_objects.append(pl)
             player_prefixes[pl.prefix] = pl
-    
+
+    #  Append old players
     for pla in ch.character_dic:
         pla = int(pla)
         if pla not in assigned_players:
             new_players.append(str(pla))
 
+    #  Print Players
     for index, play in enumerate(ch.character_dic):
         player = ch.character_dic.get(play)
         print(f"[{index+1}] ID:{player.id}, {player.firstname}")
 
+    #  Assign Player
     while True:
         choice = input("Assign id ([D]one): ").upper()
         if choice == "D":
             break
         if not choice.isdigit():
             print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not integer")
-            return
+            continue
         if 1 <= int(choice) <= len(list(ch.character_dic.keys())):
             player: object = ch.character_dic[list(ch.character_dic.keys())[int(choice)-1]]
             if player.id in assigned_players:
@@ -82,12 +90,12 @@ def player_assign(players: list[object] = None) -> tuple[list[int], list[object]
             if assigned_player.id in assigned_players:
                 while True:
                     multi = input(f"{Fore.RED}[WARNING]{Style.RESET_ALL} Player is already registered, register multiple? [Y/N]: ").upper()
-                    if multi == "N":
-                        break
-                    elif multi == "Y":
+                    if multi == "N" or multi == "Y":
                         break
                 if multi == "N":
                     continue
+
+            #  Assign Board Piece
             while True:
                 prefix = input("Assign board piece: ").upper()
                 if prefix in player_prefixes:

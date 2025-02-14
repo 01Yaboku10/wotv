@@ -20,7 +20,9 @@ class Game():
         self.scenario = Scenario(name)
         self.assigned_players, self.player_objects, self.player_prefixes = gl.player_assign()
         sl.load_spirits(self.player_objects)
+        self.summons: list[object] = sl.load_summons()
         gl.team_assign(self.player_objects)
+        self.initative_list = []
         print("---------=Teams=---------")
         print("Team 1:", end="")
         for player in self.player_objects:
@@ -35,9 +37,8 @@ class Game():
         self.add_stats()
         while True:
             gamemode = input("Choose gamemode: [A]dventure, [B]attle: ").upper()
-            sd.sound_stop()
             if gamemode == "B":
-                self.gamemode_battle()
+                self.gamemode_battle(False)
                 break
             elif gamemode == "A":
                 self.gamemode_adventure()
@@ -103,8 +104,10 @@ class Game():
             print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Added: {player.firstname}")
 
     def status_update(self, player: object):
-        if not player.status_effects is None:
-            for effect in player.status_effects:
+        self.summon_update(player)
+        if player.status_effects:
+            player_effects = player.status_effects[:]
+            for effect in player_effects:
                 if effect.ept:
                     print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Player {player.prefix} {player.firstname} took {round(effect.effect)} damage from {effect.name}")
                     player.new_hp += round(effect.effect)
@@ -115,6 +118,25 @@ class Game():
                     effect.time_left -= 1
                     print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {player.prefix} {player.firstname} has {effect.name} for {effect.time_left} more turns")
         sl.update_sheet(player)
+    
+    def summon_update(self, player: object):
+        if player.summons:
+            remove = []
+            player_summons = player.summons[:]
+            for index, summon in enumerate(player_summons):
+                entity, time = summon
+                if time <= 0:
+                    remove.append((entity, time))
+                    self.removed_players.append(entity)
+                    del self.player_prefixes[entity.prefix]
+                    self.player_objects.remove(entity)
+                else:
+                    time -= 1
+                    player.summons[index] = (entity, time)
+            for summon in remove:
+                entity, time = summon
+                print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Player {player.prefix} {player.firstname}'s summon [{entity.prefix} {entity.firstname}] has run out")
+                player.summons.remove(summon)
     
     def power_check(self, player: object):
         player.new_power_level = 0
@@ -214,6 +236,7 @@ class Game():
                 break
 
     def gamemode_adventure(self):
+        sd.sound_menu("ambiance")
         while True:
             print("---------=Adventure=---------")
             action = input("[A]ction, [E]quipment, [U]pdate Effects, [B]attle: ").upper()
@@ -253,13 +276,19 @@ class Game():
                     elif confirm == "N":
                         break
 
-    def gamemode_battle(self, start = False):
+    def gamemode_battle(self, start: bool = False):
         print(f"---------=Scenario {self.scenario.name}=---------")
         self.generate_initiative()
+        sd.sound_menu("battle")
         tm = gl.Turnmeter()
+        self.removed_players = []
         while True:
+            self.removed_players.clear()
             print(f"---------=Scenario {self.scenario.name}, Turn {tm.currentturn}=---------")
-            for player in self.initative_list:
+            active_players = [player for player in self.player_objects if player.new_hp > 0]
+            for player in active_players:
+                if player in self.removed_players:
+                    continue
                 print(f"---------=[{player.prefix}] {player.firstname}'s Turn=---------")
                 if not start:
                     self.status_update(player)
@@ -289,7 +318,44 @@ class Game():
                         break
             tm.nextturn()
 
-    def action(self, player):
+    def action(self, player: object):
+        print("---------=Action Menu=---------")                   # TODO: Add the summon function so that you can actually summon
+        while True:                                     # Make the function seperate so you call call it through a scroll
+            choice = input("Cast [M]agic, [S]ummon: ").upper()
+            if choice == "M":
+                self.spell_action(player)
+                break
+            elif choice == "S":
+                if not self.summons:
+                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} No summons are registered...")
+                    continue
+                print("---------=Summons=---------")
+                for index, entity in enumerate(self.summons):
+                    print(f"[{index+1}] {entity.firstname}")
+                while True:
+                    choice = fs.is_int(input("Summon entity with id: "))
+                    if 1 <= choice <= len(self.summons):
+                        time = fs.is_int(input("For how many turns: "))
+                        self.summon(player, self.summons[choice-1], time)
+                        break
+                break
+
+    def summon(self, player: object, entity: object, time: int):
+        while True:
+            prefix = input(f"Assign prefix for {entity.firstname}: ").upper()
+            if prefix in self.player_prefixes:
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} The prefix {prefix} is already in use...")
+            else:
+                entity.prefix = prefix
+                break
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Summoning {entity.firstname} [{time}] for {player.prefix} {player.firstname}")
+        player.summons.append((entity, time))
+        self.player_objects.append(entity)
+        self.player_prefixes[entity.prefix] = entity
+        self.add_stats([entity])
+        self.generate_initiative()
+
+    def spell_action(self, player: object):
         while True:
             cast_spell = input("Cast spell: ")
             if fs.is_spell(cast_spell):
@@ -400,7 +466,8 @@ class Game():
                 if not spell.type == "Buff":
                     print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Dealt {round(effect)} damage to Player {oppon.prefix} {oppon.firstname}")
                 print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {oppon.prefix} {oppon.firstname} now has {oppon.new_hp}/{oppon.max_hp} HP")
-                sl.update_sheet(oppon)
+                if oppon.prefix != player.prefix:
+                    sl.update_sheet(oppon)
             player.new_mp -= mp_cost
             player.new_sp -= sp_cost
             if spell.target == "AOE" and spell.karma != 0:
@@ -425,9 +492,8 @@ class Game():
 
             for play in self.player_objects:
                 if play.new_hp <= 0:
-                    self.player_objects.remove(play)
-                    self.initative_list.remove(play)
-                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {play.firstname} has been slain")
+                    self.removed_players.append(play)
+                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {play.prefix} {play.firstname} has been slain")
     
     def status_effect(self, spell, opponent):
         if not spell.statuses is None:
@@ -449,21 +515,32 @@ class Game():
                 print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {opponent.prefix} {opponent.firstname} has recieved {status_effect.name} for {status_effect.time} turns")
 
     def god_action(self):
-        choice = input("[D]amage/Heal, [P]layer, [B]ackpack, [E]ffect, [I]nfo, [S]ave, [Q]uit, [C]ontinue\n").upper().strip()
+        choice = input("[D]amage/Heal, [P]layer, [B]ackpack, [E]ffect, [I]nfo, [M]usic, [S]ave, [Q]uit, [C]ontinue\n").upper().strip()
         if choice == "D":
-            character = input("Character Prefix ID: ").upper()
-            if character in self.player_prefixes:
-                character = self.player_prefixes[character]
-                for player in self.player_objects:
-                    if not fs.is_attrib(player, "prefix"):
-                        continue
-                    if player.prefix == character.prefix:
-                        damage = input("Deal damage(-)/heal(+) equal to: ")
-                        player.new_hp += int(damage)
-                        print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {player.firstname} took damage equal to {damage} and now has {player.new_hp} HP")
-                        sl.update_sheet(player)
-            else:
-                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} No player found")
+            while True:
+                character = input("Character Prefix ID: ").upper()
+                if character in self.player_prefixes:
+                    character = self.player_prefixes[character]
+                    for player in self.player_objects:
+                        if not fs.is_attrib(player, "prefix"):
+                            continue
+                        if player.prefix == character.prefix:
+                            while True:
+                                dmg_type = input("Affect skill/stat type: ").lower()
+                                if dmg_type in gl.SKILLS or dmg_type in gl.STATS:
+                                    damage = fs.is_int(input("Deal debuff(-)/buff(+) equal to: "))
+                                    dmg_type = f"new_{dmg_type}"
+                                    old_val = getattr(player, dmg_type)
+                                    new_damage = old_val+damage
+                                    setattr(player, dmg_type, new_damage)
+                                    new_dmg_type = dmg_type.removeprefix("new_")
+                                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {player.firstname} took damage equal to {damage} and now has {getattr(player, dmg_type)} {new_dmg_type.upper()}")
+                                    sl.update_sheet(player)
+                                    break
+                            break
+                    break
+                else:
+                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} No player found")
         elif choice == "P":
             assigned, objects, prefixes = gl.player_assign(self.player_objects)
             gl.team_assign(objects)
@@ -478,6 +555,8 @@ class Game():
             self.player_prefixes = prefixes
 
             self.generate_initiative()
+        elif choice == "M":
+            sd.sound_menu()
         elif choice =="E":
             character = input("Character Prefix ID: ").upper()
             if character in self.player_prefixes:
@@ -555,12 +634,16 @@ class Game():
             if character in self.player_prefixes:
                 character = self.player_prefixes[character]
                 for player in self.player_objects:
+                    summons = [(obj.firstname, turns) for obj, turns in player.summons]
                     if player.prefix == character.prefix:
                         print(f"---------={player.firstname} {player.surname}=---------")
                         print(f"Board Piece: {player.prefix}")
                         print(f"Power level: {player.new_power_level}/{player.power_level}")
                         print(f"Karma: {player.new_karma}/{player.karma}")
                         print(f"Religion: {player.religion}")
+                        print(f"Armor Class: {player.armor_class}")
+                        print(f"Spirits: {player.spirits}")
+                        print(f"Summons: {summons}")
                         print("---------=Effects=---------")
                         for current_effect in player.status_effects:
                             print(f"{current_effect.name} [{current_effect.time_left}]")
@@ -593,16 +676,29 @@ class Game():
                 elif choice == "N":
                     break
             print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Returning to Main Menu...")
+            sd.sound_stop()
+            sd.sound_play("menu_theme", 0.2, -1)
             menu.main_menu()
         elif choice == "C":
             return
     
 
     def generate_initiative(self):
-        self.initative_list = []
-        for player in self.player_objects:
-            player.initiative = random.randint(1, 20)
-            self.initative_list.append(player)
+        print("---------=Initiative=---------")
+        while True:
+            choice = input("[R]andom or [S]elect: ").upper()
+            if choice == "R":
+                for player in self.player_objects:
+                    player.initiative = random.randint(1, 20)
+                    self.initative_list.append(player)
+                break
+            elif choice == "S":
+                for player in self.player_objects:
+                    if player in self.initative_list:
+                        continue
+                    player.initiative = fs.is_int(input(f"Initiative for {player.prefix} {player.firstname}: "))
+                    self.initative_list.append(player)
+                break
         self.initative_list.sort(key=lambda x: x.initiative, reverse=True)
 
 class Scenario():

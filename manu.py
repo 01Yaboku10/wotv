@@ -147,7 +147,7 @@ def edit_character(player: object):
         elif choice == "I":
             while True:
                 print(f"---------={player.firstname} {player.surname}=---------")
-                print(f"Firstname: {player.firstname}\nSurname: {player.surname}\nNicknames: {player.nicknames}\nMagical Attributes: {player.attribute}\nKarma: {player.karma}\nReligion: {player.religion}\nOccupation: {player.occupation}\nResidence: {player.residence}")
+                print(f"Firstname: {player.firstname}\nSurname: {player.surname}\nNicknames: {player.nicknames}\nCharacter Type: {player.character_type}\nMagical Attributes: {player.attribute}\nKarma: {player.karma}\nReligion: {player.religion}\nOccupation: {player.occupation}\nResidence: {player.residence}")
                 choice = input("Change: [F]irstname, [S]urname, [N]icknames, [O]ccupation, [H]ome, [R]eligion, [A]ttribute, [K]arma, [D]one\n").upper().strip()
                 if choice == "F":
                     player.firstname = input("New Firstname: ").lower().capitalize()

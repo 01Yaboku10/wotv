@@ -135,11 +135,11 @@ def item_list(item_name: str, level: int):
         # Scrolls
 
         # Potions
-        "mana_potion": Item("Potion of Mana", "consumable", level, weight=0.5, mp=25, resistance=-10),
-        "stamina_potion": Item("Potion of Stamina", "consumable", level, weight=0.5, sp=25, resistance=-10),
+        "mana_potion": Item("Potion of Mana", "consumable", level, weight=0.5, mp=25, status_effects=[ef.effect_list("anti-resistance", 3, 1)]),
+        "stamina_potion": Item("Potion of Stamina", "consumable", level, weight=0.5, sp=25, status_effects=[ef.effect_list("anti-resistance", 3, 1)]),
         "strength_potion": Item("Potion of Strength", "consumable", level, weight=0.5, status_effects=[ef.effect_list("strength", 3, 1)]),
         "swiftness_potion": Item("Potion of Swiftness", "consumable", level, weight=0.5, status_effects=[ef.effect_list("swiftness", 3, 1)]),
-        "healing_potion": Item("Healing Potion", "consumable", level, weight=0.5, hp=50, resistance=-10)
+        "healing_potion": Item("Healing Potion", "consumable", level, weight=0.5, hp=50, status_effects=[ef.effect_list("anti-resistance", 3, 1)])
 
     }
     item = items_list[item_name]

@@ -4,6 +4,8 @@ import job_classes as jc
 import character as ch
 import spell as sp
 import item as it
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 init(autoreset=True)
 
@@ -20,6 +22,33 @@ def is_type(input, type: type) -> bool:
         return True
     else:
         return False
+    
+def is_sheet(creds: str, sheetname: str):
+    try:
+        service = build("drive", "v3", credentials=creds)
+
+        result = service.files().list(
+            q=f"name = '{sheetname}' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+            spaces='drive',
+            fields='files(id, name)',
+            pageSize=10).execute()
+
+        files = result.get('files', [])
+
+        if not files:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} No sheet found for '{sheetname}'")
+            return False
+
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Sheet found: {files[0]['name']} with ID: {files[0]['id']}")
+        return True
+
+    except HttpError as error:
+        if error.resp.status == 404:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Sheet not found (404 error)")
+            return False
+        else:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} {error}")
+            return False
     
 def is_attrib(player: object, attribute: str) -> bool:
     if hasattr(player, attribute):

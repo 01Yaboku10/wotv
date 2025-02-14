@@ -41,6 +41,7 @@ class Character():
                  occupation: str = None,
                  nicknames: list[str] = None,
                  race_type: str = None,
+                 summons: list[tuple[object, int]] = None,  # Is empty on start
                  gold: int = 0,
                  silver: int = 0,
                  bronze: int = 0,
@@ -96,7 +97,7 @@ class Character():
         self.equipment_br = equipment_br
         self.power_level = power_level
         self.residence = residence
-        self.summons = []
+        self.summons = summons if summons is not None else []
         self.character_type = character_type
         self.occupation = occupation
         self.nicknames = nicknames if nicknames is not None else []
@@ -164,6 +165,8 @@ class Character():
         f"Attributes: {self.attribute}\n"
         f"Armor Class: {self.armor_class}\n"
         f"Race Type: {self.race_type}\n"
+        f"Character Type: {self.character_type}\n"
+        f"Spirits: {self.spirits}\n"
         f"Occupation: {self.occupation}\n"
         f"Residence: {self.residence}\n"
         f"Weight: {self.weight}/{self.max_weight} kg\n"

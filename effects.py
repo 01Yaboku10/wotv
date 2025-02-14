@@ -220,6 +220,7 @@ def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = Fals
         "increase_all_skills": Effect("Increase All Skills", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, effect=1, athletics=1, acrobatics=1, stealth=1, sleight=1, investigation=1, insight=1, perception=1, deception=1, intimidation=1, persuasion=1, performance=1),
 
         # Items
+        "anti-resistance": Effect("Anti-Resistance", time=tim, time_left=tim, success=succ, resistance=-10),
         "strength": Effect("Strength", time=tim, time_left=tim, success=succ, phyatk=25, athletics=10, resistance=-10),
         "swiftness": Effect("Swiftness", time=tim, time_left=tim, success=succ, agility=25, acrobatics=10, resistance=-10)
     }

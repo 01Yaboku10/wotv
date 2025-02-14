@@ -37,12 +37,12 @@ class Spell():
 
 def spell_list(spell_name):
     spells_list = {
-        "magic_arrow": Spell("Magic Arrow", "Magical", 1, -5, 1, "magatk", "Mana", True),
-        "acid_arrow": Spell("Acid Arrow", "Magical", 2, -7, 1, "magatk", "Acid", True, status=[ef.effect_list("corrosion", 2, 1)]),
-        "shockwave": Spell("Shockwave", "Magical", 1, -5, 1, "magatk", "Air", True),
-        "fireball": Spell("Fireball", "Magical", 3, -8, 2, "magatk", "Fire", True, status=[ef.effect_list("ignite", 2, 1)]),
-        "earth_blast": Spell("Earth Blast", "Magical", 2, -7, 1, "magatk", "Earth", True),
-        "thunderlance": Spell("Thunderlance", "Magical", 3, -12, 2, "magatk", "Thunder", True, status=[ef.effect_list("shock", 2, 1, True), ef.effect_list("stun", 1, 0.3)]),
+        "magic_arrow": Spell("Magic Arrow", "Magical", 1, -2, 1, "magatk", "Mana", True),
+        "acid_arrow": Spell("Acid Arrow", "Magical", 2, -4, 1, "magatk", "Acid", True, status=[ef.effect_list("corrosion", 2, 1)]),
+        "shockwave": Spell("Shockwave", "Magical", 1, -2, 1, "magatk", "Air", True),
+        "fireball": Spell("Fireball", "Magical", 3, -6, 2, "magatk", "Fire", True, status=[ef.effect_list("ignite", 2, 1)]),
+        "earth_blast": Spell("Earth Blast", "Magical", 2, -4, 1, "magatk", "Earth", True),
+        "thunderlance": Spell("Thunderlance", "Magical", 3, -8, 2, "magatk", "Thunder", True, status=[ef.effect_list("shock", 2, 1, True), ef.effect_list("stun", 1, 0.3)]),
         "greater_pact": Spell("Greater Pact", "Buff", 5, 5, 3, "magatk", "Holy", True, status=[ef.effect_list("increase_all_stats", 3, 1), ef.effect_list("increase_all_skills", 3, 1)], karma=-30),
         "doomed_prophecy": Spell("Doomed Prophecy", "Magical", 6, 5, 3, "magatk", "Holy", True, "AOE", status=[ef.effect_list("increase_all_stats", 3, 1, use_religion="Vorgoth"), ef.effect_list("increase_all_skills", 3, 1, use_religion="Vorgoth")], karma=-20)
     }
