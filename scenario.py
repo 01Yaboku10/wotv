@@ -185,8 +185,11 @@ class Game():
                         sl.update_sheet(player)
                         break
                     elif choice == "U":
-                        player.inventory_use()
-                        sl.update_sheet(player)
+                        scroll: str = player.inventory_use()
+                        if fs.is_type(scroll, str):
+                            self.spell_action(player, scroll)
+                        else:
+                            sl.update_sheet(player)
                     elif choice == "T":
                         if not player.inventory:
                             print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Inventory Empty")
@@ -319,8 +322,8 @@ class Game():
             tm.nextturn()
 
     def action(self, player: object):
-        print("---------=Action Menu=---------")                   # TODO: Add the summon function so that you can actually summon
-        while True:                                     # Make the function seperate so you call call it through a scroll
+        print("---------=Action Menu=---------")
+        while True:
             choice = input("Cast [M]agic, [S]ummon: ").upper()
             if choice == "M":
                 self.spell_action(player)
@@ -355,13 +358,14 @@ class Game():
         self.add_stats([entity])
         self.generate_initiative()
 
-    def spell_action(self, player: object):
-        while True:
-            cast_spell = input("Cast spell: ")
-            if fs.is_spell(cast_spell):
-                break
-            else:
-                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Spell not found, Try again...")
+    def spell_action(self, player: object, cast_spell: str = None):
+        if cast_spell is None:
+            while True:
+                cast_spell = input("Cast spell: ")
+                if fs.is_spell(cast_spell):
+                    break
+                else:
+                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Spell not found, Try again...")
         spell = sp.spell_list(cast_spell)
 
         #  ENCHANTMENT

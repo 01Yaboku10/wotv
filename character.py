@@ -915,7 +915,7 @@ class Character():
                         del self.inventory[index]
         remove_list.clear()
 
-    def inventory_use(self) -> None:
+    def inventory_use(self) -> bool:
         consumables: list[tuple[object, int, str]] = []
 
         #  Find consumables
@@ -926,7 +926,7 @@ class Character():
             else:
                 level = 2
             item: object = it.item_list(name, level)
-            if item.type == "consumable":
+            if item.type == "consumable" or item.type == "scroll":
                 consumables.append((item, amount, name))
 
         #  Select consumable
@@ -939,16 +939,23 @@ class Character():
                 choice = fs.is_int(input("Consume item ID: "))
                 if 1 <= choice <= len(consumables):
                     consumable, amount, con_name = consumables[choice-1]
-                    consume_amount = fs.is_int(input(f"Consume amount [{amount}]: "))
-                    for effect in consumable.status_effects:
-                        if effect.is_effect:
-                            spell_effect = fs.is_int(input(f"Spell Effect for {effect.name}: "))
-                        else:
-                            spell_effect = 1
-                        self.status_effects.append(effect)
-                        self.status_apply(effect, spell_effect)
-                    self.inventory_remove(con_name, consume_amount, consumable.level)
-                    break
+                    if not consumable.type == "scroll":
+                        consume_amount = fs.is_int(input(f"Consume amount [{amount}]: "))
+                        for effect in consumable.status_effects:
+                            if effect.is_effect:
+                                spell_effect = fs.is_int(input(f"Spell Effect for {effect.name}: "))
+                            else:
+                                spell_effect = 1
+                            self.status_effects.append(effect)
+                            self.status_apply(effect, spell_effect)
+                        self.inventory_remove(con_name, consume_amount, consumable.level)
+                        return False
+                    else:
+                        consume_amount = 1
+                        spell = it.item_list(con_name, 1)
+                        self.inventory_remove(con_name, consume_amount, consumable.level)
+                        return spell.spell
+
 
     def status_apply(self, effect: object, spell_effect: int):
         if effect.is_effect:

@@ -9,6 +9,7 @@ class Item():
                  weight: int = 0,
                  status_effects: list = None,
                  send_obj: bool = False,
+                 spell: str = None,
                  hp: int = 0,
                  mp: int = 0,
                  sp: int = 0,
@@ -48,6 +49,7 @@ class Item():
 
         self.name = level_name_list[level] + name
         self.type = type
+        self.spell = spell
         self.level = level
         self.armor_class = armor_class
         self.weight = weight
@@ -133,6 +135,7 @@ def item_list(item_name: str, level: int):
         "apple": Item("Apple", "item", 2, weight=0.1),
         
         # Scrolls
+        "fireball_scroll": Item("Fireball Scroll", "scroll", 2, weight=0.5, spell="fireball"),
 
         # Potions
         "mana_potion": Item("Potion of Mana", "consumable", level, weight=0.5, mp=25, status_effects=[ef.effect_list("anti-resistance", 3, 1)]),
