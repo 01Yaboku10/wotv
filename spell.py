@@ -1,7 +1,7 @@
 import effects as ef
 
 class Spell():
-    def __init__(self, 
+    def __init__(self,
                  name: str,  #  Spell name
                  type: str,  #  e.g attack, buff, curse
                  tier: int,  #  Spell Tier 1-11
@@ -15,7 +15,10 @@ class Spell():
                  enchant: str = None,  #  e.g pierce
                  status: list[object] = None,  #  List of status effects
                  karma: int = 0,  #  Karma consumed/added upon casted spell
-                 cooldown: int = 0
+                 cooldown: int = 0,
+                 phydef: int = 0,
+                 magdef: int = 0,
+                 hp: int = 0
                  ):
         self.name = name
         self.type = type
@@ -37,13 +40,14 @@ class Spell():
 
 def spell_list(spell_name):
     spells_list = {
+        #  SPELLS
         "magic_arrow": Spell("Magic Arrow", "Magical", 1, -2, 1, "magatk", "Mana", True),
         "acid_arrow": Spell("Acid Arrow", "Magical", 2, -4, 1, "magatk", "Acid", True, status=[ef.effect_list("corrosion", 2, 1)]),
         "shockwave": Spell("Shockwave", "Magical", 1, -2, 1, "magatk", "Air", True),
         "fireball": Spell("Fireball", "Magical", 3, -6, 2, "magatk", "Fire", True, status=[ef.effect_list("ignite", 2, 1)]),
         "earth_blast": Spell("Earth Blast", "Magical", 2, -4, 1, "magatk", "Earth", True),
         "thunderlance": Spell("Thunderlance", "Magical", 3, -8, 2, "magatk", "Thunder", True, status=[ef.effect_list("shock", 2, 1, True), ef.effect_list("stun", 1, 0.3)]),
-        "greater_pact": Spell("Greater Pact", "Buff", 5, 5, 3, "magatk", "Holy", True, status=[ef.effect_list("increase_all_stats", 3, 1), ef.effect_list("increase_all_skills", 3, 1)], karma=-30),
+        "greater_pact": Spell("Greater Pact", "Buff", 5, 5, 3, "magatk", "Holy", True, status=[ef.effect_list("increase_all_stats", 3, 1), ef.effect_list("increase_all_skills", 3, 1)], karma=-30, cooldown=3),
         "doomed_prophecy": Spell("Doomed Prophecy", "Magical", 6, 5, 3, "magatk", "Holy", True, "AOE", status=[ef.effect_list("increase_all_stats", 3, 1, use_religion="Vorgoth"), ef.effect_list("increase_all_skills", 3, 1, use_religion="Vorgoth")], karma=-20)
     }
     spell = spells_list[spell_name]

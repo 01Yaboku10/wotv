@@ -6,14 +6,34 @@ import random
 import copy
 
 init(autoreset=True)
-SKILLS = ["athletics", "acrobatics", "stealth", "sleight", "investigation", "insight", "perception", "deception", "intimidation", "persuasion", "performance", "max_weight"]
+SKILLS = ["athletics", "acrobatics", "stealth", "sleight", "investigation", "insight", "perception", "deception", "intimidation", "persuasion", "performance"]
 STATS = ["hp", "mp", "sp", "phyatk", "phydef", "agility", "finess", "magatk", "magdef", "resistance", "special"]
+EQUIPMENT_SLOTS_F = ["equipment_h", "equipment_c", "equipment_l", "equipment_s", "equipment_g", "equipment_be", "equipment_rh", "equipment_lh", "equipment_n", "equipment_r1", "equipment_r2", "equipment_br"]
+EQUIPMENT_SLOTS_S = ["h", "c", "l", "s", "g", "be", "rh", "lh", "n", "r1", "r2", "br"]
 
 def log_clear():
     if os.name == "nt":
         os.system("cls")
     else:
         os.system("clear")
+
+def capitalize_string(string: str, splitter: str) -> str:
+    new_string = ""
+    if string is not None:
+        for i in string.split(splitter):
+            new_string += f"{i.capitalize()} "
+        return new_string.strip()
+    else:
+        return None
+
+def uncapitalize_string(string: str, splitter: str) -> str:
+    new_string = ""
+    if string is not None:
+        for i in string.split(splitter):
+            new_string += f"{i.lower()}_"
+        return new_string.removesuffix("_")
+    else:
+        return None
 
 def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
     print("---------=Assign Teams=---------")
@@ -48,7 +68,7 @@ def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
             player = players[choice-1]
             player.team = 2
 
-def player_assign(players: list[object] = None) -> tuple[list[int], list[object]]:
+def player_assign(players: list[object] = None) -> tuple[list[int], list[object], dict[str, object]]:
     print("---------=Assign Players=---------")
     assigned_players = []
     player_objects = []

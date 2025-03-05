@@ -4,6 +4,8 @@ import job_classes as jc
 import character as ch
 import spell as sp
 import item as it
+import abilities as ab
+import obstacle as ob
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -69,6 +71,27 @@ def is_spell(spell: str) -> bool:
     except KeyError:
         print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Spell does not exist")
         return False
+    
+def is_obstacle(obstacle: str) -> bool:
+    try:
+        return ob.obstacle_list(obstacle)
+    except KeyError:
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Obstacle does not exist")
+        return False
+
+def is_ability(ability: str) -> bool:
+    try:
+        return ab.ability_list(ability)
+    except KeyError:
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Ability does not exist")
+        return False
+
+def is_cooldown(player: object, spell: str) -> int:
+    if player.cooldowns:
+        for cooldown in player.cooldowns:
+            if cooldown == spell:
+                return player.cooldowns[cooldown]
+    return False
 
 def is_job(job: str) -> bool:
     try:

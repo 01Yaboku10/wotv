@@ -36,13 +36,14 @@ def google_write(player_id, cell, data, dir="h"):
     # Write data to cell
     sheet.update(values=values, range_name=cell)
 
-def create_matrix(race_classes: list, race_levels, job_classes, job_levels, inventory_names, inventory_amount, attributes, nicknames, gold):
+def create_matrix(balance_breakers: list, race_classes: list, race_levels, job_classes, job_levels, inventory_names, inventory_amount, attributes, nicknames, gold):
     #max_len = max(len(race_classes), len(job_classes), len(inventory_names), len(attributes), len(nicknames))
     max_len = 20
 
     def pad_list(lst, length):
         return lst + [""] * (length - len(lst))
     
+    balance_breakers = pad_list(balance_breakers, max_len)
     race_classes = pad_list(race_classes, max_len)
     race_levels = pad_list(race_levels, max_len)
     job_classes = pad_list(job_classes, max_len)
@@ -56,6 +57,8 @@ def create_matrix(race_classes: list, race_levels, job_classes, job_levels, inve
     matrix = []
     for i in range(max_len):
         row = [
+            balance_breakers[i],
+            "",
             race_classes[i],
             race_levels[i],
             "",

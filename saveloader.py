@@ -5,6 +5,9 @@ import failsafe as fs
 import google_sheet as gs
 import item as it
 import character as ch
+import racial_classes as rc
+import job_classes as jc
+import gamelogic as gl
 
 init(autoreset=True)
 
@@ -17,23 +20,49 @@ def create_savefolder(directory):
         else:
             print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} New directory {directory} could not be created.")
 
+def save_check(file_path) -> bool:
+    with open(file_path, "r", encoding="utf-8") as file:
+        lines = file.readlines()
+    with open(file_path, "r", encoding="utf-8") as file:
+        for index, line in enumerate(lines):
+            if not line.startswith("//"):
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} An error occured within the save file at line {index+1}")
+                return False
+    return True
+
+
 def save_all(directory: str, players: list[object]):
+    file_path = os.path.join(directory, "characters_temp.txt")
+    true_path = os.path.join(directory, "characters.txt")
+    with open(true_path, "r", encoding="utf-8") as file:
+        lines = file.readlines()
+    with open(file_path, "w", encoding="utf-8") as save:
+        for line in lines:
+            save.write(line)
     for player in players:
         save_character(directory, player)
+    if save_check(file_path):
+        os.remove(true_path)
+        os.rename(file_path, true_path)
 
 def save_character(directory: str, character: object):
     create_savefolder(directory)
     c = character
     character_found = False
-    character_id = "characters.txt"
+    character_id = "characters_temp.txt"
     file_path = os.path.join(directory, character_id)
-    
+
     # Read the file and store lines in a list
     with open(file_path, "r", encoding="utf-8") as file:
         lines = file.readlines()
     
     with open(file_path, "w", encoding="utf-8") as save:
         for line in lines:
+            if line.startswith("*"):
+                continue
+            for index, spirit in enumerate(c.spirits):
+                if not fs.is_type(spirit, str):
+                    c.spirits[index] = spirit.id
             if f"ID:{c.id}" in line:
                 save.write(f"//ID:{c.id}"
                             f"//Firstname:{c.firstname}"
@@ -44,8 +73,10 @@ def save_character(directory: str, character: object):
                             f"//Occupation:{c.occupation}"
                             f"//Residence:{c.residence}"
                             f"//Attribute:{c.attribute}"
-                            f"//BalanceBreaker:{c.attribute}"
+                            f"//BalanceBreaker:{c.balance_breaker}"
                             f"//Spirits:{c.spirits}"
+                            f"//Master:{c.master}"
+                            f"//VasselSlot:{c.equip_slot}"
                             f"//Races:{c.racial_classes}"
                             f"//Jobs:{c.job_classes}"
                             f"//Power:{c.power_level}"
@@ -93,6 +124,8 @@ def save_character(directory: str, character: object):
                             f"//Attribute:{c.attribute}"
                             f"//BalanceBreaker:{c.attribute}"
                             f"//Spirits:{c.spirits}"
+                            f"//Master:{c.master}"
+                            f"//VasselSlot:{c.equip_slot}"
                             f"//Races:{c.racial_classes}"
                             f"//Jobs:{c.job_classes}"
                             f"//Power:{c.power_level}"
@@ -140,6 +173,8 @@ def load_characters(directory: str):
         "Surname": "surname",
         "Nicknames": "nicknames",
         "Spirits": "spirits",
+        "Master": "master",
+        "VasselSlot": "equip_slot",
         "Attribute": "attribute",
         "Races": "racial_classes",
         "Jobs": "job_classes",
@@ -159,6 +194,7 @@ def load_characters(directory: str):
         "MP": "mp",
         "SP": "sp",
         "PHY.ATK": "phyatk",
+        "PHY.DEF": "phydef",
         "Agility": "agility",
         "Finess": "finess",
         "MAG.ATK": "magatk",
@@ -194,6 +230,8 @@ def load_characters(directory: str):
                 'job_classes': [],
                 'balance_breaker': [],
                 'spirits': [],
+                'master': None,
+                'equip_slot': [],
                 'power_level': 0,
                 'residence': None,
                 'race_type': None,
@@ -223,6 +261,7 @@ def load_characters(directory: str):
                 'mp': 0,
                 'sp': 0,
                 'phyatk': 0,
+                'phydef': 0,
                 'agility': 0,
                 'finess': 0,
                 'magatk': 0,
@@ -258,7 +297,7 @@ def load_characters(directory: str):
                         # Assign the value, converting to appropriate types
                         if key in ["Races", "Jobs", "Inventory"]:
                             character_data[var_name] = eval(value)  # List of tuples
-                        elif key in ["Attribute", "Nicknames", "Spirits"]:
+                        elif key in ["Attribute", "Nicknames", "Spirits", "BalanceBreaker", "VasselSlot"]:
                             try:
                                 # Try to evaluate value as a list
                                 evaluated_value = eval(value)
@@ -294,6 +333,8 @@ def load_characters(directory: str):
                 surname=character_data['surname'],
                 nicknames=character_data['nicknames'],
                 spirits=character_data['spirits'],
+                master=character_data['master'],
+                equip_slot=character_data['equip_slot'],
                 attribute=character_data['attribute'],
                 racial_classes=character_data['racial_classes'],
                 job_classes=character_data['job_classes'],
@@ -327,6 +368,7 @@ def load_characters(directory: str):
                 mp=character_data['mp'],
                 sp=character_data['sp'],
                 phyatk=character_data['phyatk'],
+                phydef=character_data['phydef'],
                 agility=character_data['agility'],
                 finess=character_data['finess'],
                 magatk=character_data['magatk'],
@@ -348,6 +390,7 @@ def update_sheet(player: object):
     print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Updating sheet for {player.firstname}...")
 
     sheet = f"wotv player {player.id}"
+    blb = []
     rcn = []
     rcl = []
     jcn = []
@@ -359,15 +402,21 @@ def update_sheet(player: object):
     gold = []
 
 
-
+    if player.balance_breaker:
+        for i in player.balance_breaker:
+            blb.append(i)
     if player.racial_classes:
         for i in player.racial_classes:
             name, level = i
+            race = rc.race_list(name, level)
+            name = race.name
             rcn.append(name)
             rcl.append(level)
     if player.job_classes:
         for i in player.job_classes:
             name, level = i
+            job = jc.job_list(name, level)
+            name = job.name
             jcn.append(name)
             jcl.append(level)
     if player.inventory:
@@ -394,7 +443,7 @@ def update_sheet(player: object):
     gold.append(player.bronze)
 
     # Equipment
-    equipment_ids = ["h", "c", "l", "s", "g", "be", "rh", "lh", "n", "r1", "r2", "br"]
+    equipment_ids = gl.EQUIPMENT_SLOTS_S
     equip_data = []
     for i in equipment_ids:
         equip_name = f"equipment_{i}"
@@ -408,15 +457,17 @@ def update_sheet(player: object):
             equip_data.append(["", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
     # Effects
-    status_effects = []
+    status_effects = [["", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] for i in range(17)]
+    last_index = 0
     if player.status_effects:
-        for e in player.status_effects:
-            status_effects.append([e.name, e.new_hp, e.new_mp, e.new_sp, e.new_phyatk, e.new_phydef, e.new_agility, e.new_finess, e.new_magatk, e.new_magdef, e.new_resistance, e.new_special, e.new_athletics, e.new_acrobatics, e.new_stealth, e.new_sleight, e.new_investigation, e.new_insight, e.new_perception, e.new_deception, e.new_intimidation, e.new_persuasion, e.new_performance, e.time_left])
-    else:
-        for i in range(10):
-            status_effects.append(["", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        for index, e in enumerate(player.status_effects):
+            status_effects[index] = [e.name, e.new_hp, e.new_mp, e.new_sp, e.new_phyatk, e.new_phydef, e.new_agility, e.new_finess, e.new_magatk, e.new_magdef, e.new_resistance, e.new_special, e.new_athletics, e.new_acrobatics, e.new_stealth, e.new_sleight, e.new_investigation, e.new_insight, e.new_perception, e.new_deception, e.new_intimidation, e.new_persuasion, e.new_performance, e.time_left]
+            last_index = index
+    if player.abilities:
+        for index, a in enumerate(player.abilities):
+            status_effects[last_index+index+1] = [a.name, a.hp, a.mp, a.mp, a.phyatk, a.phydef, a.agility, a.finess, a.magatk, a.magdef, a.resistance, a.special, a.athletics, a.acrobatics, a.stealth, a.sleight, a.investigation, a.insight, a.perception, a.deception, a.intimidation, a.persuasion, a.performance, a.time]
 
-    data = gs.create_matrix(rcn, rcl, jcn, jcl, invn, inva, att, nick, gold)
+    data = gs.create_matrix(blb, rcn, rcl, jcn, jcl, invn, inva, att, nick, gold)
 
     update_data = [
         {"range": "A2:V5", "values": [
@@ -424,10 +475,10 @@ def update_sheet(player: object):
             [player.new_hp, player.new_mp, player.new_sp, player.new_phyatk, player.new_phydef, player.new_agility, player.new_finess, player.new_magatk, player.new_magdef, player.new_resistance, player.new_special, player.new_athletics, player.new_acrobatics, player.new_stealth, player.new_sleight, player.new_investigation, player.new_insight, player.new_perception, player.new_deception, player.new_intimidation, player.new_persuasion, player.new_performance],
             [player.max_hp, player.max_mp, player.max_sp, player.max_phyatk, player.max_phydef, player.max_agility, player.max_finess, player.max_magatk, player.max_magdef, player.max_resistance, player.max_special, player.max_athletics, player.max_acrobatics, player.max_stealth, player.max_sleight, player.max_investigation, player.max_insight, player.max_perception, player.max_deception, player.max_intimidation, player.max_persuasion, player.max_performance]
         ]},
-        {"range": "A6:M6", "values": [
-            [player.id, player.firstname, player.surname, player.karma, player.religion, player.weight, player.max_weight, player.power_level, player.armor_class, player.race_type, player.occupation, player.residence, player.balance_breaker]
+        {"range": "A6:L6", "values": [
+            [player.id, player.firstname, player.surname, player.karma, player.religion, player.weight, player.max_weight, player.power_level, player.armor_class, player.race_type, player.occupation, player.residence]
         ]},
-        {"range": "O6:Y39", "values": data},
+        {"range": "M6:Y39", "values": data},
         {"range": "B41:X52", "values": equip_data},
         {"range": "B54:Y70", "values": status_effects}
     ]
@@ -448,14 +499,67 @@ def update_sheet(player: object):
 def load_spirits(players: list[object]) -> list[object]:
     summons = []
     for p in players:
+        player_spirits = []
         print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Uploading Spirits for {p.prefix}...")
-        for spirit in p.spirits:
-            for attrib in spirit.attribute:
-                p.attribute.append(attrib)
+        for index, spirit in enumerate(p.spirits):
             summon = ch.character_dic[str(spirit)]
+            summon.prefix = input(f"Assign Prefix for Spirit {summon.firstname}: ").upper()
+            summon.vassel = False
             summons.append(summon)
+            player_spirits.append(summon)
+            for attrib in summon.attribute:
+                if attrib not in p.attribute:
+                    p.attribute.append(attrib)
+        p.spirits = player_spirits
     print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Upload Spirits: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
     return summons
+
+def update_spirit(spirit: object, mode="start") -> None:
+    player = ch.character_dic.get(spirit.master)
+    if not fs.is_player(spirit.master):
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Spirit could not be updated because of: {Fore.RED}[INCORRECT VAR TYPE]{Style.RESET_ALL}")
+        return
+    if mode == "start":
+        spirit_reset(spirit, player)
+    spirit_check(spirit, player)
+
+
+def spirit_reset(spirit: object, player: object):
+    attributes: list = gl.STATS + gl.SKILLS
+    old_multiplier = 1
+    for job_class in player.job_classes:
+        name, level = job_class
+        if name == "spirit_tamer" or name == "greater_spirit_tamer" or name == "master_spirit_tamer":
+            old_multiplier += level*0.02
+    for attribute in attributes:
+        if fs.is_attrib(spirit, f"new_{attribute}"):
+            spirit_attrib = getattr(spirit, f"new_{attribute}")
+            max_spirit_attrib = getattr(spirit, f"max_{attribute}")
+            max_player_attrib = getattr(player, f"max_{attribute}")
+
+            new_multiplier = old_multiplier + (max_player_attrib*0.01)/3
+
+            setattr(spirit, f"new_{attribute}", round(spirit_attrib/new_multiplier))
+            setattr(spirit, f"max_{attribute}", round(max_spirit_attrib/new_multiplier))
+    
+
+def spirit_check(spirit: object, player: object):
+    attributes: list = gl.STATS + gl.SKILLS
+    old_multiplier = 1
+    for job_class in player.job_classes:
+        name, level = job_class
+        if name == "spirit_tamer" or name == "greater_spirit_tamer" or name == "master_spirit_tamer":
+            old_multiplier += level*0.02
+    for attribute in attributes:
+        if fs.is_attrib(spirit, f"new_{attribute}"):
+            spirit_attrib = getattr(spirit, f"new_{attribute}")
+            max_spirit_attrib = getattr(spirit, f"max_{attribute}")
+            max_player_attrib = getattr(player, f"max_{attribute}")
+
+            new_multiplier = old_multiplier + (max_player_attrib*0.01)/3
+
+            setattr(spirit, f"new_{attribute}", round(spirit_attrib*new_multiplier))
+            setattr(spirit, f"max_{attribute}", round(max_spirit_attrib*new_multiplier))
 
 def load_summons() -> list[object]:
     summons = []

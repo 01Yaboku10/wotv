@@ -130,6 +130,7 @@ def item_list(item_name: str, level: int):
         "steel_sword": Item("Steel Sword", "equipment", level, "medium", 2, phyatk=15, agility=-5, acrobatics=-2, intimidation=2),
         "steel_dagger": Item("Steel Dagger", "equipment", level, "light", 2, phyatk=7, agility=4, acrobatics=-1, intimidation=2),
         "steel_scythe": Item("Steel Scythe", "equipment", level, "medium", 2, phyatk=20, agility=-10, acrobatics=-2, intimidation=2),
+        "grimoire": Item("Grimoire", "equipment", 2, None, 2, magatk=10, intimidation=2),
         
         # Foods
         "apple": Item("Apple", "item", 2, weight=0.1),

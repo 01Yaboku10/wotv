@@ -22,7 +22,7 @@ def main_menu():
 
 def character_menu():
     print("------------------------------------=Character Menu=------------------------------------")
-    choice = input("[C]reate character, [L]ook up character, [E]dit character, [S]ave character, [M]ain Menu\n").upper().strip()
+    choice = input("[C]reate character, [L]ook up character, [E]dit character, [S]ave character, [U]pload, [M]ain Menu\n").upper().strip()
     if choice == "C":
         character_creation()
     elif choice == "L":
@@ -38,6 +38,14 @@ def character_menu():
         save_character()
     elif choice == "M":
         main_menu()
+    elif choice =="U":
+        while True:
+            lookup = fs.is_player(input("Character id: "))
+            if not lookup:
+                continue
+            sl.update_sheet(lookup)
+            break
+        character_menu()
     else:
         character_menu()
 
@@ -54,8 +62,14 @@ def scenario_menu():
 def character_creation():
     id: int = fs.is_int(input("Character id: "))
     character_type = input("Character Type: ").lower()
+    if character_type == "spirit":
+        master = input("Master ID: ")
+    else:
+        master = None
     firstname: str = input("Character firstname: ").capitalize()
+    firstname = gl.capitalize_string(firstname, " ")
     surname: str = input("Character surname: ").capitalize()
+    surname = gl.capitalize_string(surname, " ")
     karma: int = fs.is_int(input("Character karma: "))
     religion: str = input("Character religon: ").capitalize()
     attributes: list = []
@@ -66,10 +80,10 @@ def character_creation():
         if attribute == "R":
             attribute = gl.magic_attribute_gen()
             attributes.append(attribute)
-            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL}Added Magic Attribute: {attribute}")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Added Magic Attribute: {attribute}")
         else:
             attributes.append(attribute)
-            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL}Added Magic Attribute: {attribute}")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Added Magic Attribute: {attribute}")
             
     while True:
         race = input("Character Race: ").lower()
@@ -78,7 +92,7 @@ def character_creation():
         else:
             break
     level = fs.is_int(input("Race level: "))
-    player = ch.Character(id, firstname, surname, attributes, karma, religion, [(race, level)], character_type=character_type)
+    player = ch.Character(id, firstname, surname, attributes, karma, religion, [(race, level)], character_type=character_type, master=master)
     edit_character(player)
 
 def lookup_character():
@@ -148,16 +162,19 @@ def edit_character(player: object):
             while True:
                 print(f"---------={player.firstname} {player.surname}=---------")
                 print(f"Firstname: {player.firstname}\nSurname: {player.surname}\nNicknames: {player.nicknames}\nCharacter Type: {player.character_type}\nMagical Attributes: {player.attribute}\nKarma: {player.karma}\nReligion: {player.religion}\nOccupation: {player.occupation}\nResidence: {player.residence}")
-                choice = input("Change: [F]irstname, [S]urname, [N]icknames, [O]ccupation, [H]ome, [R]eligion, [A]ttribute, [K]arma, [D]one\n").upper().strip()
+                choice = input("Change: [F]irstname, [S]urname, [N]icknames, [O]ccupation, [H]ome, [R]eligion, [A]ttribute, [K]arma, [E]quip Slot, [M]aster, [D]one\n").upper().strip()
                 if choice == "F":
-                    player.firstname = input("New Firstname: ").lower().capitalize()
+                    firstname = input("New Firstname: ")
+                    player.firstname = gl.capitalize_string(firstname, " ")
                 elif choice == "S":
-                    player.surname = input("New Surname: ").lower().capitalize()
+                    surname = input("New Surname: ")
+                    player.surname = gl.capitalize_string(surname, " ")
                 elif choice == "N":
                     while True:
                         choice = input("[A]dd, [R]emove: ").upper()
                         if choice == "A":
-                            player.nicknames.append(input("Add Nickname: ").capitalize())
+                            nickname = input("Add Nickname: ")
+                            player.nicknames.append(gl.capitalize_string(nickname, " "))
                             break
                         elif choice == "R":
                             for i, nickname in enumerate(player.nicknames):
@@ -169,11 +186,40 @@ def edit_character(player: object):
                                 del player.nicknames[remove]
                             break
                 elif choice == "O":
-                    player.occupation = input("New Occupation: ").lower().capitalize()
+                    occupation = input("New Occupation: ")
+                    player.occupation = gl.capitalize_string(occupation, " ")
+                elif choice == "M":
+                    if player.character_type != "spirit":
+                        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Player is not a spirit...")
+                    else:
+                        player.master = str(input("New Master ID: "))
+                elif choice == "E":
+                    if player.character_type != "spirit":
+                        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Player is not a spirit...")
+                    else:
+                        while True:
+                            print(f"Slots: {player.equip_slot}")
+                            choice = input("[A]dd, [R]emove, [D]one: ").upper()
+                            if choice == "D":
+                                break
+                            elif choice == "A":
+                                add = input("Add: ").lower()
+                                if add in gl.EQUIPMENT_SLOTS_S:
+                                    player.equip_slot.append(add)
+                                else:
+                                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} {add} is not an equipment slot...")
+                            elif choice == "R":
+                                remove = input("Remove: ").lower()
+                                if remove in player.equip_slot:
+                                    player.equip_slot.remove(remove)
+                                else:
+                                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} {remove} is not an active equip slot...")
                 elif choice == "R":
-                    player.religion = input("New Religion: ").lower().capitalize()
+                    religion = input("New Religion: ")
+                    player.religion = gl.capitalize_string(religion, " ")
                 elif choice == "H":
-                    player.residence = input("New Residence: ").lower().capitalize()
+                    residence = input("New Residence: ")
+                    player.residence = gl.capitalize_string(residence, " ")
                 elif choice == "A":
                     for index, attrib in enumerate(player.attribute):
                         print(f"[{index+1}] {attrib}")
@@ -260,14 +306,17 @@ def edit_character(player: object):
     character_menu()
 
 def save_character():
-    chara = input("Save character with id: ")
-    if chara == "SA":
-        players: list[object] = []
-        for key, player in ch.character_dic.items():
-            players.append(player)
-        sl.save_all("character_saves", players)
-    else:
-        if not fs.is_player(chara):
-            return
-        sl.save_character("character_saves", ch.character_dic.get(chara))
+    while True:
+        chara = input("Save character with id: ")
+        if chara == "SA":
+            players: list[object] = []
+            for key, player in ch.character_dic.items():
+                players.append(player)
+            sl.save_all("character_saves", players)
+            break
+        else:
+            if not fs.is_player(chara):
+                continue
+            sl.save_all("character_saves", [ch.character_dic.get(chara)])
+            break
     character_menu()

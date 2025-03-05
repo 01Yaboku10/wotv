@@ -21,7 +21,10 @@ class Character():
                  job_classes: list[tuple[str, int]] = None,
                  inventory: list[tuple[str, int]] = None,
                  status_effects: list[object] = None,
+                 abilities: list[object] = None,
                  spirits: list[int] = None,  # Character IDs
+                 master: str = None,  #  Character ID
+                 equip_slot: list[str] = None,  #  equipment id's for spirit vassel
                  equipment_h: tuple[str, int] = None,
                  equipment_c: tuple[str, int] = None,
                  equipment_l: tuple[str, int] = None,
@@ -68,21 +71,25 @@ class Character():
                  deception: int = 0,
                  intimidation: int = 0,
                  persuasion: int = 0,
-                 performance: int = 0) -> None:
+                 performance: int = 0,
+                 effect: int = 0) -> None:
         print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Creating Character...")
         
         self.error = False
 
         self.id = id
-        self.firstname = firstname.capitalize()
-        self.surname = surname.capitalize()
+        self.firstname = gl.capitalize_string(firstname, " ")
+        self.surname = gl.capitalize_string(surname, " ")
         self.attribute = attribute if attribute is not None else []
         self.job_classes = job_classes if job_classes is not None else []
         self.racial_classes = racial_classes if racial_classes is not None else []
         self.inventory = inventory if inventory is not None else []
         self.balance_breaker = balance_breaker if balance_breaker is not None else []
         self.status_effects = status_effects if status_effects is not None else []
+        self.abilities = abilities if abilities is not None else []
         self.spirits = spirits if spirits is not None else []
+        self.master = str(master)
+        self.equip_slot = equip_slot if equip_slot is not None else []
         self.equipment_h = equipment_h
         self.equipment_c = equipment_c
         self.equipment_l = equipment_l
@@ -96,10 +103,10 @@ class Character():
         self.equipment_r2 = equipment_r2
         self.equipment_br = equipment_br
         self.power_level = power_level
-        self.residence = residence
+        self.residence = gl.capitalize_string(residence, " ")
         self.summons = summons if summons is not None else []
         self.character_type = character_type
-        self.occupation = occupation
+        self.occupation = gl.capitalize_string(occupation, " ")
         self.nicknames = nicknames if nicknames is not None else []
         self.weight = weight
         self.gold = gold
@@ -108,7 +115,7 @@ class Character():
         self.max_weight = max_weight
         self.karma = self.new_karma = self.max_karma = karma
         self.race_type = race_type
-        self.religion = religion
+        self.religion = gl.capitalize_string(religion, " ")
         self.level = 0
         self.hp = self.new_hp = self.max_hp = hp
         self.mp = self.new_mp = self.max_mp = mp
@@ -122,7 +129,7 @@ class Character():
         self.resistance = self.new_resistance = self.max_resistance = resistance
         self.special = self.new_special = self.max_special = special
         self.athletics = self.new_athletics = self.max_athletics = athletics
-        self.acrobatics = self.new_acrobatics = self.max_acrobatics = acrobatics
+        self.acrobatics = self.new_acrobatics = self.max_acrobatics = int(acrobatics)
         self.stealth = self.new_stealth = self.max_stealth = int(stealth)
         self.sleight = self.new_sleight = self.max_sleight = int(sleight)
         self.investigation = self.new_investigation = self.max_investigation = investigation
@@ -133,28 +140,31 @@ class Character():
         self.persuasion = self.new_persuasion = self.max_persuasion = persuasion
         self.performance = self.new_performance = self.max_performance = performance
         self.team = None
+        self.effect = effect
 
+        self.emcumberment = 0
         self.weight = 0
 
         self.race_type_list = []
         self.armor_classes = []
         self.armor_class = "None"
 
-        self.update_race()
-        self.update_job()
+        if self.character_type != "Barrier":
+            self.update_race()
+            self.update_job()
 
-        self.id_check()
-        self.race_check()
-        self.armor_class_check()
-        self.equipment_check()
-        self.attribute_check()
+            self.id_check()
+            self.race_check()
+            self.armor_class_check()
+            self.equipment_check()
+            self.attribute_check()
 
-        self.power_check()
+            self.power_check()
         
-        if not self.error:
-            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character Creation: {Fore.GREEN}Success{Style.RESET_ALL}")
-        else:
-            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character Creation: {Fore.GREEN}Failed{Style.RESET_ALL}")
+            if not self.error:
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character Creation: {Fore.GREEN}Success{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character Creation: {Fore.GREEN}Failed{Style.RESET_ALL}")
 
     def __repr__(self) -> str:
         return (
@@ -166,6 +176,7 @@ class Character():
         f"Armor Class: {self.armor_class}\n"
         f"Race Type: {self.race_type}\n"
         f"Character Type: {self.character_type}\n"
+        f"Master: {self.master}\n" if self.master is not None else ""
         f"Spirits: {self.spirits}\n"
         f"Occupation: {self.occupation}\n"
         f"Residence: {self.residence}\n"
@@ -200,6 +211,10 @@ class Character():
         "---------=Inventory=---------\n"
         f"{self.inventory}\n"
     )
+
+    def barrier(self):
+        self.new_hp *= self.effect
+        self.max_hp *= self.effect
 
     def print_eq(self):
         print(
@@ -353,6 +368,8 @@ class Character():
         for attrib in equipments:
             piece = getattr(self, attrib)
             if piece is not None:
+                if fs.is_type(piece, str):
+                    continue
                 equipment, level = piece
                 equipped = it.item_list(equipment, level)
                 self.hp += equipped.hp
@@ -438,15 +455,41 @@ class Character():
             self.weight += item.weight*amount
         #print("DEBUGG: EQUIP CHECK COMPLETE")
 
+        #  Emcumberment
+        self.weight_check()
+
         if fs.is_attrib(self, "prefix"):
             sl.update_sheet(self)
 
+    def weight_check(self):
+        self.acrobatics += self.emcumberment
+        self.new_acrobatics += self.emcumberment
+        self.max_acrobatics += self.emcumberment
+        if self.weight > self.max_weight:
+            self.emcumberment = 100
+        elif self.weight > self.max_weight*0.95:
+            self.emcumberment = 10
+        elif self.weight > self.max_weight*0.9:
+            self.emcumberment = 8
+        elif self.weight > self.max_weight*0.85:
+            self.emcumberment = 6
+        elif self.weight > self.max_weight*0.8:
+            self.emcumberment = 4
+        elif self.weight > self.max_weight*0.75:
+            self.emcumberment = 2
+        else:
+            self.emcumberment = 0
+        self.acrobatics -= self.emcumberment
+        self.new_acrobatics -= self.emcumberment
+        self.max_acrobatics -= self.emcumberment
+
     def equipment_reset(self):
         #print("DEBUGG: RUNNING EQUIP RESET")
-        equipments = ["equipment_h", "equipment_c", "equipment_l", "equipment_s", "equipment_g", "equipment_be", "equipment_rh", "equipment_lh", "equipment_n", "equipment_r1", "equipment_r2", "equipment_br"]
-        for attrib in equipments:
+        for attrib in gl.EQUIPMENT_SLOTS_F:
             piece = getattr(self, attrib)
             if piece is not None:
+                if fs.is_type(piece, str):
+                    continue
                 equipment, level = piece
                 equipped = it.item_list(equipment, level)
                 self.hp -= equipped.hp
@@ -549,8 +592,8 @@ class Character():
             return
         self.armor_class = "None"
         for index, armor in enumerate(self.armor_classes):
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Deleted armor class {self.armor_classes[index]}")
             del self.armor_classes[index]
-            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL}: Deleted armor class {index}")
         
         if fs.is_attrib(self, "armor_class"):
             print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Armor Class Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
@@ -602,29 +645,29 @@ class Character():
         for raceclass in self.racial_classes:
             name, level = raceclass
             race = racial_classes.race_list(name, level)
-            self.hp += race.hp*level
-            self.mp += race.mp*level
-            self.sp += race.sp*level
-            self.level += level*level
-            self.phyatk += race.phyatk*level
-            self.phydef += race.phydef*level
-            self.agility += race.agility*level
-            self.finess += race.finess*level
-            self.magatk += race.magatk*level
-            self.magdef += race.magdef*level
-            self.resistance += race.resistance*level
-            self.special += race.special*level
-            self.athletics += race.athletics*level
-            self.acrobatics += race.acrobatics*level
-            self.stealth += race.stealth*level
-            self.sleight += race.sleight*level
-            self.investigation += race.investigation*level
-            self.insight += race.insight*level
-            self.perception += race.perception*level
-            self.deception += race.deception*level
-            self.intimidation += race.intimidation*level
-            self.persuasion += race.persuasion*level
-            self.performance += race.performance*level
+            self.hp += race.hp
+            self.mp += race.mp
+            self.sp += race.sp
+            self.level += level
+            self.phyatk += race.phyatk
+            self.phydef += race.phydef
+            self.agility += race.agility
+            self.finess += race.finess
+            self.magatk += race.magatk
+            self.magdef += race.magdef
+            self.resistance += race.resistance
+            self.special += race.special
+            self.athletics += race.athletics
+            self.acrobatics += race.acrobatics
+            self.stealth += race.stealth
+            self.sleight += race.sleight
+            self.investigation += race.investigation
+            self.insight += race.insight
+            self.perception += race.perception
+            self.deception += race.deception
+            self.intimidation += race.intimidation
+            self.persuasion += race.persuasion
+            self.performance += race.performance
 
             self.race_type_list.append(race.type)
 
@@ -739,14 +782,13 @@ class Character():
 
     def equipment_remove(self):
         self.equipment_reset()
-        equipment_ids = ["h", "c", "l", "s", "g", "be", "rh", "lh", "n", "r1", "r2", "br"]
         print("-------------------------")
         while True:
             choice = input("[R]emove, [U]nequip: ").upper()
             if choice == "R":
                 while True:
                     remove = input("Remove slot [h, c, s, g...]: ").lower()
-                    if remove in equipment_ids:
+                    if remove in gl.EQUIPMENT_SLOTS_S:
                         slot_rem = f"equipment_{remove}"
                         if fs.is_slot_taken(self, slot_rem):
                             setattr(self, slot_rem, None)
@@ -755,7 +797,7 @@ class Character():
             elif choice == "U":
                 while True:
                     unequip = input("Unequip slot [h, c, s, g...]: ").lower()
-                    if unequip in equipment_ids:
+                    if unequip in gl.EQUIPMENT_SLOTS_S:
                         slot_unequip = f"equipment_{unequip}"
                         if fs.is_slot_taken(self, slot_unequip):
                             name, level = getattr(self, slot_unequip)
@@ -768,10 +810,9 @@ class Character():
         self.equipment_check()
     
     def equipment_equip(self, add_item, level):
-        equipment_ids = ["h", "c", "l", "s", "g", "be", "rh", "lh", "n", "r1", "r2", "br"]
         while True:
             add_to: str = input("Equip to [h, c, s, g...]: ").lower()
-            if add_to in equipment_ids:
+            if add_to in gl.EQUIPMENT_SLOTS_S:
                 equip_slot: str = f"equipment_{add_to}"
                 
                 if fs.is_slot_taken(self, equip_slot):
@@ -956,7 +997,6 @@ class Character():
                         self.inventory_remove(con_name, consume_amount, consumable.level)
                         return spell.spell
 
-
     def status_apply(self, effect: object, spell_effect: int):
         if effect.is_effect:
             effect.spell_effect=spell_effect
@@ -1008,3 +1048,23 @@ class Character():
             self.max_persuasion += effect.new_persuasion
             self.max_performance += effect.new_performance
             self.max_karma += effect.new_karma
+
+    def ability_apply(self, ability: object):
+        if ability.is_per:
+            ability.apply_per(self)
+        if ability.is_max:
+            for stat in gl.STATS + gl.SKILLS:
+                setattr(self, f"new_{stat}", getattr(self, f"new_{stat}")+getattr(ability, stat))
+                setattr(self, f"max_{stat}", getattr(self, f"max_{stat}")+getattr(ability, stat))
+        else:
+            for stat in gl.STATS + gl.SKILLS:
+                setattr(self, f"new_{stat}", getattr(self, f"new_{stat}")+getattr(ability, stat))
+    
+    def ability_remove(self, ability: object):
+        if ability.is_max:
+            for stat in gl.STATS + gl.SKILLS:
+                setattr(self, f"new_{stat}", getattr(self, f"new_{stat}")-getattr(ability, stat))
+                setattr(self, f"max_{stat}", getattr(self, f"max_{stat}")-getattr(ability, stat))
+        else:
+            for stat in gl.STATS + gl.SKILLS:
+                setattr(self, f"new_{stat}", getattr(self, f"new_{stat}")-getattr(ability, stat))
