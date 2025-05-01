@@ -8,6 +8,7 @@ from colorama import Fore, Style, init
 from tqdm import tqdm
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from google.auth.exceptions import TransportError
 import failsafe as fs
 
 init(autoreset=True)
@@ -76,33 +77,38 @@ def create_matrix(balance_breakers: list, race_classes: list, race_levels, job_c
     return matrix
 
 def google_batch_update(player_id, update_requests, batch_size=10):
-    # Define the scope
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    
-    # Add credentials to the account
-    creds = Credentials.from_service_account_file("C:\\Users\\Yaboku\\Pictures\\rpg\\Game\\Python\\wotv-main\\wotv-448920-89d48030bb09.json", scopes=scope)
+    try:
+        # Define the scope
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        
+        # Add credentials to the account
+        creds = Credentials.from_service_account_file("C:\\Users\\Yaboku\\Pictures\\rpg\\Game\\Python\\wotv-main\\wotv-448920-89d48030bb09.json", scopes=scope)
 
-    if not fs.is_sheet(creds, player_id):
-        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Update skipped for '{player_id}'")
-        return
+        if not fs.is_sheet(creds, player_id):
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Update skipped for '{player_id}'")
+            return
 
-    # Authorize the client
-    client = gspread.authorize(creds)
+        # Authorize the client
+        client = gspread.authorize(creds)
 
-    # Open the Google Sheet
-    sheet = client.open(player_id).worksheet("Code")
+        # Open the Google Sheet
+        sheet = client.open(player_id).worksheet("Code")
 
-    # Perform the batch update
-    with tqdm(total=len(update_requests), desc=f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Updating Google Sheet", ncols=100) as pbar:
-        # Split the update requests into batches and apply them
-        for i in range(0, len(update_requests), batch_size):
-            # Extract a batch of update requests
-            batch = update_requests[i:i+batch_size]
+        # Perform the batch update
+        with tqdm(total=len(update_requests), desc=f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Updating Google Sheet", ncols=100) as pbar:
+            # Split the update requests into batches and apply them
+            for i in range(0, len(update_requests), batch_size):
+                # Extract a batch of update requests
+                batch = update_requests[i:i+batch_size]
 
-            # Perform the batch update
-            sheet.batch_update(batch)
+                # Perform the batch update
+                sheet.batch_update(batch)
 
-            # Update the progress bar by the number of items processed in this batch
-            pbar.update(len(batch))
-    
-    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Update Complete")
+                # Update the progress bar by the number of items processed in this batch
+                pbar.update(len(batch))
+        
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Update Complete")
+    except TransportError as e:
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Error {e} occured when trying to upload character.")
+    except Exception as e:
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Error {e} occured when trying to upload character.")

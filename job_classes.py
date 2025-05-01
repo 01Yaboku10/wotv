@@ -67,13 +67,16 @@ class Job():
 def job_list(job_name, level):
     job_class_list = {
         # Magic Caster
-        "wizard": Job("Wizard", "magic", level, 25, "light", mp=1, magatk=1, magdef=1, investigation=1),
+        "wizard": Job("Wizard", "magic", level, 30, "light", mp=1, magatk=1, magdef=1, investigation=1),
         "greater_wizard": Job("Greater Wizard", "magic", level, 50, "light", mp=1, magatk=1, magdef=1, investigation=1),
         "master_wizard": Job("Master Wizard", "magic", level, 125, "light", mp=1, magatk=1, magdef=1, investigation=1),
         "elemental_mage": Job("Elemental Mage", "magic", level, 30, mp=3, magatk=1, magdef=1, investigation=1),
         "spirit_tamer": Job("Spirit Tamer", "magic", level, 30, mp=2, resistance=-5, insight=2, performance=2),
         "greater_spirit_tamer": Job("Greater Spirit Tamer", "magic", level, 60, mp=2, resistance=-5, insight=2, performance=1),
         "master_spirit_tamer": Job("Master Spirit Tamer", "magic", level, 130, mp=2, resistance=-5, insight=2),
+        "priest": Job("Priest", "magic", level, 30, "light", mp=1, resistance=10, magdef=2, magatk=1),
+        "greater_priest": Job("Greater Priest", "magic", level, 30, "light", mp=1, resistance=10, magdef=2, magatk=1),
+        "master_priest": Job("Master Priest", "magic", level, 30, "light", mp=1, resistance=10, magdef=2, magatk=1),
 
         # Warrior
         "knight": Job("Knight", "warrior", level, 25, "medium", sp= 1, phydef=1, phyatk=1, agility=1, athletics=1, perception=1),
