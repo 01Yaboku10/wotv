@@ -218,6 +218,7 @@ def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = Fals
         "stun": Effect("Stun", time=tim, time_left=tim, acrobatics=-100, agility=-100, success=succ),
         "increase_all_stats": Effect("Increase All Stats", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, effect=1, hp=1, sp=1, mp=1, phyatk=1, phydef=1, agility=1, finess=1, magatk=1, magdef=1, resistance=1, special=1),
         "increase_all_skills": Effect("Increase All Skills", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, effect=1, athletics=1, acrobatics=1, stealth=1, sleight=1, investigation=1, insight=1, perception=1, deception=1, intimidation=1, persuasion=1, performance=1),
+        "glimmering_shield": Effect("Glimmering Shield", time=tim, time_left=tim, success=succ),
 
         # Items
         "anti-resistance": Effect("Anti-Resistance", time=tim, time_left=tim, success=succ, resistance=-10),

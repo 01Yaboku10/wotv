@@ -1,0 +1,8 @@
+obsticals systems, including things like walls and barriers
+add spell caster defence on save roll for like walls and shit
+add damage dealing ground effects like acid and fire, make it so that players stepping into it gains the status effect by making it an effect list.
+For example, "status effects" -> "add" -> "Ground effect" -> LIST OF "index. Effect" FOR ONE TURN
+
+Add barriers and cooldowns to the scenario save
+
+Check over barrier system

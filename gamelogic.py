@@ -186,6 +186,8 @@ class Turnmeter():
         self.currentturn = 1
     def nextturn(self):
         self.currentturn += 1
+    def setturn(self, turn):
+        self.currentturn = turn
 
 class Magic():
     def __init__(self, name: str, weight: float):

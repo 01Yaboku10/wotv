@@ -51,11 +51,13 @@ def character_menu():
 
 def scenario_menu():
     print("---------=Scenario Menu=---------")
-    choice = input("[N]ew scenario, [M]ain Menu\n").upper().strip()
+    choice = input("[N]ew Scenario, [L]oad Scenario, [M]ain Menu\n").upper().strip()
     if choice == "N":
-        foo = so.Game()
+        foo = so.Game("N")
     elif choice == "M":
         main_menu()
+    elif choice == "L":
+        foo = so.Game("L")
     else:
         scenario_menu()
 

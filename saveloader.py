@@ -8,6 +8,10 @@ import character as ch
 import racial_classes as rc
 import job_classes as jc
 import gamelogic as gl
+import saveloader as sl
+import copy
+import effects as ef
+import ast
 
 init(autoreset=True)
 
@@ -449,6 +453,9 @@ def update_sheet(player: object):
         equip_name = f"equipment_{i}"
         equipment = getattr(player, equip_name, None)
         if equipment is not None:
+            if not fs.is_type(equipment, tuple):
+                equip_data.append(["Spirit", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+                continue
             equip_name, equip_level = equipment
             eq = it.item_list(equip_name, equip_level)
             equipment_attrib = [eq.name, eq.hp, eq.mp, eq.sp, eq.phyatk, eq.phydef, eq.agility, eq.finess, eq.magatk, eq.magdef, eq.resistance, eq.special, eq.athletics, eq.acrobatics, eq.stealth, eq.sleight, eq.investigation, eq.insight, eq.perception, eq.deception, eq.intimidation, eq.persuasion, eq.performance]
@@ -568,3 +575,197 @@ def load_summons() -> list[object]:
         if player.character_type == "summon":
             summons.append(player)
     return summons
+
+def disp_files(dir: str, file_name: str, file_suf: str) -> str:
+    file_list = []
+    sl.create_savefolder(dir)
+    files = os.listdir(dir)
+    for name in files:
+        if name.startswith(file_name):
+            file_list.append(name.removeprefix(file_name).removesuffix(file_suf))
+
+    if not file_list:
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} No files found in {dir}...")
+        return
+
+    for i, file in enumerate(file_list):
+        print(f"[{i+1}] {file}")
+
+    while True:
+        choice = fs.is_int(input("Choose file: "))
+        if 1 <= choice <= len(file_list):
+            file = f"{file_name}{file_list[choice-1]}{file_suf}"
+            return file
+
+def load_scenario(scenario_name: str):
+    assigned_players = []
+    player_objects = []
+    player_prefixes = {}
+
+    file_path = os.path.join("scenario_saves", scenario_name)
+    if not os.path.exists(file_path):
+        with open(file_path, "w", encoding="utf-8") as file:
+            pass
+    
+    scenario_map = {
+        "Name": "name",
+        "Mode": "mode",
+        "Turn": "turn",
+        "Player Turn": "playerturn"
+    }
+
+    scenario_data = {
+        'name': None,
+        'turn': 0,
+        'players': [],
+        'playerturn': 0,
+        'mode': None
+    }
+
+    attribute_map = {
+        "Karma": "new_karma",
+        "HP": "new_hp",
+        "MP": "new_mp",
+        "SP": "new_sp",
+        "PHY.ATK": "new_phyatk",
+        "PHY.DEF": "new_phydef",
+        "Agility": "new_agility",
+        "Finess": "new_finess",
+        "MAG.ATK": "new_magatk",
+        "MAG.DEF": "new_magdef",
+        "Resistance": "new_resistance",
+        "Special": "new_special",
+        "Athletics": "new_athletics",
+        "Acrobatics": "new_acrobatics",
+        "Stealth": "new_stealth",
+        "Sleight": "new_sleight",
+        "Perception": "new_perception",
+        "Deception": "new_deception",
+        "Intimidation": "new_intimidation",
+        "Persuasion": "new_persuasion",
+        "Performance": "new_performance",
+        "Status Effects": "status_effects",
+        "Team": "team",
+        "Prefix": "prefix",
+        "Initiative": "initiative",
+        "Cooldowns": "cooldowns",
+        "Barriers": "barriers"
+    }
+
+    with open(file_path, "r", encoding="utf-8") as file:
+        for line in file:
+            if line.startswith("*"):
+                continue
+            elif line.startswith("Init"):  # INIT
+                info = line.split("/&/")
+                info = info[1].split("//")
+                for attr in info:
+                    if not attr:
+                        continue
+                    key, value = attr.split(":", 1)
+                    key = key.strip()
+                    value = value.strip()
+
+                    if not key in scenario_map:
+                        continue
+                    var_name = scenario_map[key]
+
+                    if value.isdigit():
+                        scenario_data[var_name] = int(value)  # For integers
+                    else:
+                        scenario_data[var_name] = value  # For strings
+
+            elif line.startswith("Player"):  # PLAYER
+
+                character_data = {
+                    'new_karma': 0,
+                    'new_hp': 0,
+                    'new_mp': 0,
+                    'new_sp': 0,
+                    'new_phyatk': 0,
+                    'new_phydef': 0,
+                    'new_agility': 0,
+                    'new_finess': 0,
+                    'new_magatk': 0,
+                    'new_magdef': 0,
+                    'new_resistance': 0,
+                    'new_special': 0,
+                    'new_athletics': 0,
+                    'new_acrobatics': 0,
+                    'new_stealth': 0,
+                    'new_sleight': 0,
+                    'new_perception': 0,
+                    'new_deception': 0,
+                    'new_intimidation': 0,
+                    'new_persuasion': 0,
+                    'new_performance': 0,
+                    'status_effects': [],
+                    'cooldowns': {},
+                    'barriers': [],
+                    'initiative': 0,
+                    'team': None,
+                    'prefix': "foo",
+                }
+
+                info = line.split("/&/")
+                info = info[1].split("//")
+
+                p_id = info[0].split(":")[1] # Expects Player ID in the first attribute
+                player: object = ch.character_dic.get(str(p_id))  # PLAYER
+                if player is None:
+                    print(f"{Fore.RED}[WARNING]{Style.RESET_ALL} PLAYER NOT FOUND, SKIPPING PLAYER WITH ID {p_id}")
+                    continue
+
+                # Add Attributes to dictionary
+                for attr in info:
+                    if not attr:
+                        continue
+                    key, value = attr.split(":", 1)
+                    key = key.strip()
+                    value = value.strip()
+
+                    if key not in attribute_map:
+                        continue
+                    var_name = attribute_map[key]
+
+                    if key in ["Status Effects"]:
+                        effects: list[tuple[str, int, float, bool, str, bool]] = ast.literal_eval(value)
+                        status_effects: list = []
+                        if effects:
+                            for effect in effects:
+                                status_effect: object = ef.effect_list(*effect)
+                                status_effects.append(status_effect)
+                        character_data[var_name] = status_effects
+                    elif key in ["Cooldowns"]:
+                        character_data[var_name] = ast.literal_eval(value)
+                    elif key in ["Barriers"]:
+                        barriers: list[tuple[str, int, int, int, int]] = ast.literal_eval(value)  # (name, turns, hp, phydef, magdef)
+                    elif value.isdigit():
+                        character_data[var_name] = int(value)  # For integers
+                    else:
+                        character_data[var_name] = value  # For Strings
+
+                # Add to lists
+                if player.id in assigned_players:
+                    assigned_player: object = copy.deepcopy(player)
+                else:
+                    assigned_player: object = player
+
+                # Update attributes on character
+                for attr, value in character_data.items():
+                    setattr(assigned_player, attr, value)
+
+                if assigned_player.id in assigned_players:
+                    print(f"{Fore.RED}[WARNING]{Style.RESET_ALL} Player is already registered, registgering multiple")
+                
+                if character_data["prefix"] in player_prefixes:
+                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Prefix already taken, skipping registry")
+                    continue
+                assigned_player.prefix = character_data["prefix"]
+                if assigned_player.id not in assigned_players:
+                    assigned_players.append(assigned_player.id)
+                player_objects.append(assigned_player)
+                player_prefixes[character_data["prefix"]] = assigned_player
+        scenario = (scenario_data["name"], scenario_data["turn"], player_objects, scenario_data["playerturn"], scenario_data["mode"])
+    
+    return assigned_players, player_objects, player_prefixes, scenario

@@ -15,42 +15,72 @@ import obstacle as ob
 init(autoreset=True)
 
 class Game():
-    def __init__(self):
-        print("---------=New Scenario=---------")
-        name = input("Name of Scenario: ").lower()
-        self.scenario = Scenario(name)
-        self.assigned_players, self.player_objects, self.player_prefixes = gl.player_assign()
-        self.spirits: list[object] = sl.load_spirits(self.player_objects)
-        self.obstacle_prefixes: dict[str, object] = {}
-        for spirit in self.spirits:
-            self.player_prefixes[spirit.prefix] = spirit
-            self.player_objects.append(spirit)
-            sl.update_spirit(spirit, "not start")
-        self.summons: list[object] = sl.load_summons()
-        gl.team_assign(self.player_objects)
-        self.initiative_list = []
-        print("---------=Teams=---------")
-        print("Team 1:", end="")
-        for player in self.player_objects:
-            if player.team == 1:
-                print(f" ID:{player.id} {player.prefix} {player.firstname}", end="")
-        print(".")
-        print("Team 2:", end="")
-        for player in self.player_objects:
-            if player.team == 2:
-                print(f" ID:{player.id}  {player.prefix} {player.firstname}", end="")
-        print(".")
-        self.add_stats()
-        while True:
-            gamemode = input("Choose gamemode: [A]dventure, [B]attle: ").upper()
-            if gamemode == "B":
-                self.gamemode_battle(False)
-                break
-            elif gamemode == "A":
+    def __init__(self, mode: str):
+        if mode == "N":
+            print("---------=New Scenario=---------")
+            name = input("Name of Scenario: ").lower()
+            self.scenario = Scenario(name)
+            self.assigned_players, self.player_objects, self.player_prefixes = gl.player_assign()
+            self.spirits: list[object] = sl.load_spirits(self.player_objects)
+            self.obstacle_prefixes: dict[str, object] = {}
+            for spirit in self.spirits:
+                self.player_prefixes[spirit.prefix] = spirit
+                self.player_objects.append(spirit)
+                sl.update_spirit(spirit, "not start")
+            self.summons: list[object] = sl.load_summons()
+            gl.team_assign(self.player_objects)
+            self.initiative_list = []
+            print("---------=Teams=---------")
+            print("Team 1:", end="")
+            for player in self.player_objects:
+                if player.team == 1:
+                    print(f" ID:{player.id} {player.prefix} {player.firstname}", end="")
+            print(".")
+            print("Team 2:", end="")
+            for player in self.player_objects:
+                if player.team == 2:
+                    print(f" ID:{player.id}  {player.prefix} {player.firstname}", end="")
+            print(".")
+            self.add_stats()
+            while True:
+                gamemode = input("Choose gamemode: [A]dventure, [B]attle: ").upper()
+                if gamemode == "B":
+                    self.gamemode_battle(False)
+                    break
+                elif gamemode == "A":
+                    self.gamemode_adventure()
+                    break
+        elif mode == "L":
+            print("---------=Load Scenario=---------")
+            save = sl.disp_files("scenario_saves", "scenario_", ".txt")
+            self.assigned_players, self.player_objects, self.player_prefixes, sc = sl.load_scenario(save)
+            self.scenario = Scenario(*sc)
+            self.spirits: list[object] = sl.load_spirits(self.player_objects)
+            self.obstacle_prefixes: dict[str, object] = {}
+            for spirit in self.spirits:
+                self.player_prefixes[spirit.prefix] = spirit
+                self.player_objects.append(spirit)
+                sl.update_spirit(spirit, "not start")
+            self.summons: list[object] = sl.load_summons()
+            self.initiative_list = []
+            print("---------=Teams=---------")
+            print("Team 1:", end="")
+            for player in self.player_objects:
+                if player.team == 1:
+                    print(f" ID:{player.id} {player.prefix} {player.firstname}", end="")
+            print(".")
+            print("Team 2:", end="")
+            for player in self.player_objects:
+                if player.team == 2:
+                    print(f" ID:{player.id}  {player.prefix} {player.firstname}", end="")
+            print(".")
+            self.add_stats(load=True)
+            if self.scenario.mode == "Adventure":
                 self.gamemode_adventure()
-                break
+            else:
+                self.gamemode_battle(False, True)
 
-    def add_stats(self, player: list[object] = None):
+    def add_stats(self, player: list[object] = None, load: bool = False):
         print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Adding characters...")
         if player is not None:
             player_list = player
@@ -58,53 +88,54 @@ class Game():
             player_list = self.player_objects
 
         for player in player_list:
-            player.new_hp = player.hp
-            player.new_mp = player.mp
-            player.new_sp = player.sp
-            player.new_phyatk = player.phyatk
-            player.new_phydef = player.phydef
-            player.new_agility = player.agility
-            player.new_finess = player.finess
-            player.new_magatk = player.magatk
-            player.new_magdef = player.magdef
-            player.new_resistance = player.resistance
-            player.new_special = player.special
-            player.new_athletics = player.athletics
-            player.new_acrobatics = player.acrobatics
-            player.new_stealth = player.stealth
-            player.new_sleight = player.sleight
-            player.new_investigation = player.investigation
-            player.new_insight = player.insight
-            player.new_perception = player.perception
-            player.new_deception = player.deception
-            player.new_intimidation = player.intimidation
-            player.new_persuasion = player.persuasion
-            player.new_performance = player.performance
-            player.new_karma = player.karma
-            player.max_hp = player.hp
-            player.max_mp = player.mp
-            player.max_sp = player.sp
-            player.max_phyatk = player.phyatk
-            player.max_phydef = player.phydef
-            player.max_agility = player.agility
-            player.max_finess = player.finess
-            player.max_magatk = player.magatk
-            player.max_magdef = player.magdef
-            player.max_resistance = player.resistance
-            player.max_special = player.special
-            player.max_athletics = player.athletics
-            player.max_acrobatics = player.acrobatics
-            player.max_stealth = player.stealth
-            player.max_sleight = player.sleight
-            player.max_investigation = player.investigation
-            player.max_insight = player.insight
-            player.max_perception = player.perception
-            player.max_deception = player.deception
-            player.max_intimidation = player.intimidation
-            player.max_persuasion = player.persuasion
-            player.max_performance = player.performance
-            player.max_karma = player.karma
-            player.status_effects = []
+            if not load:
+                player.new_hp = player.hp
+                player.new_mp = player.mp
+                player.new_sp = player.sp
+                player.new_phyatk = player.phyatk
+                player.new_phydef = player.phydef
+                player.new_agility = player.agility
+                player.new_finess = player.finess
+                player.new_magatk = player.magatk
+                player.new_magdef = player.magdef
+                player.new_resistance = player.resistance
+                player.new_special = player.special
+                player.new_athletics = player.athletics
+                player.new_acrobatics = player.acrobatics
+                player.new_stealth = player.stealth
+                player.new_sleight = player.sleight
+                player.new_investigation = player.investigation
+                player.new_insight = player.insight
+                player.new_perception = player.perception
+                player.new_deception = player.deception
+                player.new_intimidation = player.intimidation
+                player.new_persuasion = player.persuasion
+                player.new_performance = player.performance
+                player.new_karma = player.karma
+                player.max_hp = player.hp
+                player.max_mp = player.mp
+                player.max_sp = player.sp
+                player.max_phyatk = player.phyatk
+                player.max_phydef = player.phydef
+                player.max_agility = player.agility
+                player.max_finess = player.finess
+                player.max_magatk = player.magatk
+                player.max_magdef = player.magdef
+                player.max_resistance = player.resistance
+                player.max_special = player.special
+                player.max_athletics = player.athletics
+                player.max_acrobatics = player.acrobatics
+                player.max_stealth = player.stealth
+                player.max_sleight = player.sleight
+                player.max_investigation = player.investigation
+                player.max_insight = player.insight
+                player.max_perception = player.perception
+                player.max_deception = player.deception
+                player.max_intimidation = player.intimidation
+                player.max_persuasion = player.persuasion
+                player.max_performance = player.performance
+                player.max_karma = player.karma
+                player.status_effects = []
             player.cooldowns = {}  # dict[str, int]
             player.new_power_level = player.power_level
             player.barriers = []  # list[object]
@@ -250,10 +281,39 @@ class Game():
                                 player.equipment_check()
                                 break
                             elif remove == "E":
-                                player.equipment_remove()
+                                while True:
+                                    mode = input("[R]emove, [A]ll, [B]ack: ").upper()
+                                    if mode ==  "R":
+                                        player.equipment_remove()
+                                        sl.update_sheet(player)
+                                        break
+                                    elif mode == "A":
+                                        while True:
+                                            discard = input("Discard? Y/N: ").upper()
+                                            if discard == "Y":
+                                                player.equipment_all_unequip(True)
+                                                sl.update_sheet(player)
+                                                break
+                                            elif discard == "N":
+                                                player.equipment_all_unequip(False)
+                                                sl.update_sheet(player)
+                                                break
+                                        break
                                 break
                     elif choice == "E":
-                        player.inventory_equip()
+                        while True:
+                            mode = input("[E]quip, [A]ll, [B]ack: ").upper()
+                            if mode == "E":
+                                player.inventory_equip()
+                                sl.update_sheet(player)
+                                break
+                            elif mode == "A":
+                                player.equipment_all_equip()
+                                sl.update_sheet(player)
+                                break
+                            elif mode == "B":
+                                self.player_equipment()
+                                break
                     elif choice == "D":
                         break
                     player.weight_check()
@@ -300,17 +360,27 @@ class Game():
                     elif confirm == "N":
                         break
 
-    def gamemode_battle(self, start: bool = False):
+    def gamemode_battle(self, start: bool = False, load: bool = False):
         print(f"---------=Scenario {self.scenario.name}=---------")
-        self.generate_initiative()
+        if not load:
+            self.generate_initiative()
         sd.sound_menu("battle")
         tm = gl.Turnmeter()
+        if load:
+            tm.setturn(self.scenario.turn)
+            self.initiative_list = self.player_objects
+            self.initiative_list.sort(key=lambda x: x.initiative, reverse=True)
         self.removed_players = []
         while True:
             self.removed_players.clear()
             print(f"---------=Scenario {self.scenario.name}, Turn {tm.currentturn}=---------")
             active_players = [player for player in self.player_objects if player.new_hp > 0]
-            for player in active_players:
+            for index, player in enumerate(active_players):
+                if load:
+                    if index != self.scenario.playerturn:
+                        continue
+                    else:
+                        load = False
                 if player in self.removed_players:
                     continue
                 if fs.is_attrib(player, "vassel"):
@@ -410,8 +480,7 @@ class Game():
                 spirit: object = player.spirits[choice-1]
                 reversion = "[R]evert" if spirit.vassel else "[C]ome"
                 while True:
-                    choice = input(f"{reversion} [S]kill: ").upper()
-                    print(choice, spirit.vassel)
+                    choice = input(f"{reversion}, [S]kill: ").upper()
                     if choice == "R" and spirit.vassel:
                         spirit.vassel = False
                         print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {spirit.surname} ({spirit.firstname}) Has been reverted back into their natural form.")
@@ -420,6 +489,7 @@ class Game():
                         for attrib in spirit.equip_slot:
                             slot = f"equipment_{attrib}"
                             setattr(player, slot, None)
+                        sl.update_sheet(player)
                         break
                     elif choice == "C" and not spirit.vassel:
                         spirit.vassel = True
@@ -433,6 +503,7 @@ class Game():
                                 name, level = player_slot
                                 player.inventory_add((name, level), 1)
                             setattr(player, slot, spirit.firstname)
+                        sl.update_sheet(player)
                         break
                     elif choice == "S":
                         self.spell_action(spirit)
@@ -616,7 +687,7 @@ class Game():
 
                     #  BARRIER APPLY
                     if spell.type == "Barrier":
-                        spell.barrier(effect)
+                        spell.barrier(effect, oppon)
                         oppon.barriers.append(spell)
                     
                     #  UPDATE SPIRITS FOR OPPONENT
@@ -657,11 +728,14 @@ class Game():
             self.power_check(player)
             sl.update_sheet(player)
 
-            for play in self.player_objects:
-                if play.new_hp <= 0:
-                    self.removed_players.append(play)
-                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {play.prefix} {play.firstname} has been slain")
+            self.death_update()
     
+    def death_update(self):
+        for play in self.player_objects:
+            if play.new_hp <= 0:
+                self.removed_players.append(play)
+                print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {play.prefix} {play.firstname} has been slain")
+
     def status_effect(self, spell, opponent):
         if not spell.statuses is None:
             for status_effect in spell.statuses:
@@ -704,6 +778,7 @@ class Game():
                                     new_dmg_type = dmg_type.removeprefix("new_")
                                     print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {player.firstname} took damage equal to {damage} and now has {getattr(player, dmg_type)} {new_dmg_type.upper()}")
                                     sl.update_sheet(player)
+                                    self.death_update()
                                     break
                             break
                     break
@@ -929,12 +1004,12 @@ class Game():
         while True:
             choice = input("[R]andom or [S]elect: ").upper()
             if choice == "R":
-                for player in self.player_objects and player.character_type != "spirit":
+                for player in (p for p in self.player_objects if p.character_type != "spirit"):
                     player.initiative = random.randint(1, 20)
                     self.initiative_list.append(player)
                 break
             elif choice == "S":
-                for player in self.player_objects and player.character_type != "spirit":
+                for player in (p for p in self.player_objects if p.character_type != "spirit"):
                     if player in self.initiative_list:
                         continue
                     player.initiative = fs.is_int(input(f"Initiative for {player.prefix} {player.firstname}: "))
@@ -943,5 +1018,9 @@ class Game():
         self.initiative_list.sort(key=lambda x: x.initiative, reverse=True)
 
 class Scenario():
-    def __init__(self, name):
+    def __init__(self, name: str, turn: int = 1, players: list[object] = None, playerturn: int = 0, mode = "Adventure"):
         self.name = name
+        self.turn = turn
+        self.playerturn = playerturn
+        self.mode = mode
+        self.players = players if players is not None else []

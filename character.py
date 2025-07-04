@@ -141,6 +141,7 @@ class Character():
         self.performance = self.new_performance = self.max_performance = performance
         self.team = None
         self.effect = effect
+        self.initiative = 0
 
         self.emcumberment = 0
         self.weight = 0
@@ -176,8 +177,8 @@ class Character():
         f"Armor Class: {self.armor_class}\n"
         f"Race Type: {self.race_type}\n"
         f"Character Type: {self.character_type}\n"
-        f"Master: {self.master}\n" if self.master is not None else ""
-        f"Spirits: {self.spirits}\n"
+        + (f"Master: {self.master}\n" if self.master is not None else "")
+        + (f"Spirits: {self.spirits}\n"
         f"Occupation: {self.occupation}\n"
         f"Residence: {self.residence}\n"
         f"Weight: {self.weight}/{self.max_weight} kg\n"
@@ -210,6 +211,7 @@ class Character():
         f"Gold:{self.gold}/{self.silver}/{self.bronze}\n"
         "---------=Inventory=---------\n"
         f"{self.inventory}\n"
+        )
     )
 
     def barrier(self):
@@ -364,6 +366,7 @@ class Character():
     
     def equipment_check(self):
         #print("DEBUGG: RUNNING EQUIP CHECK")
+        self.weight = 0
         equipments = ["equipment_h", "equipment_c", "equipment_l", "equipment_s", "equipment_g", "equipment_be", "equipment_rh", "equipment_lh", "equipment_n", "equipment_r1", "equipment_r2", "equipment_br"]
         for attrib in equipments:
             piece = getattr(self, attrib)
@@ -400,7 +403,6 @@ class Character():
                     self.new_hp += equipped.hp
                     self.new_mp += equipped.mp
                     self.new_sp += equipped.sp
-                    self.weight += equipped.weight
                     self.new_phyatk += equipped.phyatk
                     self.new_phydef += equipped.phydef
                     self.new_agility += equipped.agility
@@ -423,7 +425,6 @@ class Character():
                     self.max_hp += equipped.hp
                     self.max_mp += equipped.mp
                     self.max_sp += equipped.sp
-                    self.weight += equipped.weight
                     self.max_phyatk += equipped.phyatk
                     self.max_phydef += equipped.phydef
                     self.max_agility += equipped.agility
@@ -520,7 +521,6 @@ class Character():
                     self.new_hp -= equipped.hp
                     self.new_mp -= equipped.mp
                     self.new_sp -= equipped.sp
-                    self.weight -= equipped.weight
                     self.new_phyatk -= equipped.phyatk
                     self.new_phydef -= equipped.phydef
                     self.new_agility -= equipped.agility
@@ -543,7 +543,6 @@ class Character():
                     self.max_hp -= equipped.hp
                     self.max_mp -= equipped.mp
                     self.max_sp -= equipped.sp
-                    self.weight -= equipped.weight
                     self.max_phyatk -= equipped.phyatk
                     self.max_phydef -= equipped.phydef
                     self.max_agility -= equipped.agility
@@ -684,8 +683,8 @@ class Character():
             remove = input("Remove race class [index]: ")
             if remove == "q":
                 return
-            if 1 <= remove <=len(self.racial_classes):
-                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Removing {self.racial_classes(index-1)}")
+            if 1 <= int(remove) <=len(self.racial_classes):
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Removing {self.racial_classes[index-1]}")
                 del self.racial_classes[int(remove)-1]
         else:
             print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Race class cannot be null")
@@ -800,7 +799,10 @@ class Character():
                     if unequip in gl.EQUIPMENT_SLOTS_S:
                         slot_unequip = f"equipment_{unequip}"
                         if fs.is_slot_taken(self, slot_unequip):
-                            name, level = getattr(self, slot_unequip)
+                            equipment = getattr(self, slot_unequip)
+                            if not fs.is_type(equipment, tuple):
+                                break
+                            name, level = equipment
                             self.inventory_add((name, level), 1)
                             setattr(self, slot_unequip, None)
                         break
@@ -829,6 +831,106 @@ class Character():
                 break
             else:
                 print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Invalid slot")
+
+    def equipment_all_unequip(self, discard: bool):
+        self.equipment_reset()
+        for slot in gl.EQUIPMENT_SLOTS_S:
+            equip_slot: str = f"equipment_{slot}"
+            if not fs.is_slot_taken(self, equip_slot):
+                continue
+            equipment: tuple[str, int] = getattr(self, equip_slot, None)
+            if not fs.is_type(equipment, tuple):
+                continue
+            if not discard:
+                self.inventory_add(equipment, 1)
+                print(f"{equipment} added to {self.firstname} {self.surname}")
+            else:
+                print(f"{equipment} discarded from {self.firstname} {self.surname}")
+            setattr(self, equip_slot, None) # Empty slot
+        self.equipment_check()
+
+# TODO
+    def equipment_all_equip(self):
+        self.equipment_reset()
+        self.equipment_all_unequip(False)
+        helmets: list[tuple[str, int]] = [] # list of tuples(name, level)
+        chestplates: list[tuple[str, int]] = []
+        leggings: list[tuple[str, int]] = []
+        boots: list[tuple[str, int]] = []
+        gloves: list[tuple[str, int]] = []
+        belts: list[tuple[str, int]] = []
+        bracelets: list[tuple[str, int]] = []
+        rings: list[tuple[str, int]] = []
+        weapons: list[tuple[str, int]] = []
+        necklaces: list[tuple[str, int]] = []
+
+        slot_list = {
+            "h": helmets,
+            "c": chestplates,
+            "l": leggings,
+            "s": boots,
+            "g": gloves,
+            "be": belts,
+            "rh": weapons,
+            "lh": weapons,
+            "n": necklaces,
+            "r1": rings,
+            "r2": rings,
+            "br": bracelets
+        }
+
+        # ADD ITEMS TO LISTS
+        for item in self.inventory:
+            item_name, amount = item
+            if not fs.is_type(item_name, tuple):
+                continue
+            name, level = item_name
+            got_item = it.item_list(name, level)
+            if got_item.type != "equipment":
+                continue
+            is_dupe: bool = False
+            for slot in got_item.slot:
+                if is_dupe:
+                    continue
+                for i in range(amount):
+                    slot_list.get(slot).append((name, level))
+                    if slot == "r1" or slot == "rh":
+                        is_dupe = True
+
+        # EQUIP ITEMS
+        for key, equipment in slot_list.items():
+            equip_slot = f"equipment_{key}"
+            if fs.is_slot_taken(self, equip_slot):
+                continue
+            if not equipment:  # IF THE LIST IS EMPTY
+                continue
+            highest_level_v: int = 0  # VALUE
+            highest_level_i: int = 0  # INDEX
+            highest_level_n: str = "" # NAME
+            for index, item in enumerate(equipment):
+                name, level = item
+                if level > highest_level_v:
+                    highest_level_v = level
+                    highest_level_i = index
+                    highest_level_n = name
+            item = equipment[highest_level_i]
+            setattr(self, equip_slot, item)
+            print(f"{item} equippped to {self.firstname} {self.surname}")
+
+            # REMOVE FROM INVENTORY
+            for index, item in enumerate(self.inventory):
+                item_name, item_amount = item
+                if not fs.is_type(item_name, tuple):
+                    continue
+                item_name, item_level = item_name
+                if item_name == highest_level_n and highest_level_v == item_level:
+                    if item_amount == 1:
+                        del self.inventory[index]
+                    else:
+                        self.inventory[index] = ((item_name, item_level), item_amount-1)
+
+            del slot_list[key][highest_level_i]
+        self.equipment_check
 
     def inventory_equip(self):
         self.equipment_reset()

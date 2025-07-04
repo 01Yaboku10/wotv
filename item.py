@@ -31,7 +31,8 @@ class Item():
                  deception: int = 0,
                  intimidation: int = 0,
                  persuasion: int = 0,
-                 performance: int = 0) -> None:
+                 performance: int = 0,
+                 slot: list[str] = None) -> None:
         level_name_list = {
             5: "Divine ",
             4: "Legendary ",
@@ -51,6 +52,7 @@ class Item():
         self.type = type
         self.spell = spell
         self.level = level
+        self.slot = slot if slot is not None else []
         self.armor_class = armor_class
         self.weight = weight
         if send_obj:
@@ -93,44 +95,44 @@ class Item():
 def item_list(item_name: str, level: int):
     items_list = {
         # Warrior
-        "iron_helmet": Item("Iron Helmet", "equipment", level, "medium", 1.5, phydef=7, magdef=4, perception=3, stealth=-1, sleight=-1),
-        "iron_chestplate": Item("Iron Chestplate", "equipment", level, "medium", 3, phydef=10, magdef=5, perception=2, stealth=-2, sleight=-1),
-        "iron_leggings": Item("Iron Leggings", "equipment", level, "medium", 2.5, phydef=7, magdef=4, perception=2, stealth=-2, sleight=-1),
-        "iron_boots": Item("Iron Boots", "equipment", level, "medium", 1, phydef=5, magdef=3, acrobatics=-1, perception=1, stealth=-2, sleight=-1),
-        "iron_gloves": Item("Iron Gloves", "equipment", level, "medium", 1, phydef=5, magdef=3, finess=-10, perception=1, stealth=-1, sleight=-5),
-        "warrior_belt": Item("Warrior Belt", "equipment", level, "light", 1, hp=5, sp=10, phyatk=8, phydef=8, athletics=7),
-        "warrior_ring": Item("Warrior Ring", "equipment", level, weight=0.1, sp=8, phyatk=7, phydef=5, athletics=3),
+        "iron_helmet": Item("Iron Helmet", "equipment", level, "medium", 1.5, phydef=7, magdef=4, perception=3, stealth=-1, sleight=-1, slot=["h"]),
+        "iron_chestplate": Item("Iron Chestplate", "equipment", level, "medium", 3, phydef=10, magdef=5, perception=2, stealth=-2, sleight=-1, slot=["c"]),
+        "iron_leggings": Item("Iron Leggings", "equipment", level, "medium", 2.5, phydef=7, magdef=4, perception=2, stealth=-2, sleight=-1, slot=["l"]),
+        "iron_boots": Item("Iron Boots", "equipment", level, "medium", 1, phydef=5, magdef=3, acrobatics=-1, perception=1, stealth=-2, sleight=-1, slot=["s"]),
+        "iron_gloves": Item("Iron Gloves", "equipment", level, "medium", 1, phydef=5, magdef=3, finess=-10, perception=1, stealth=-1, sleight=-5, slot=["g"]),
+        "warrior_belt": Item("Warrior Belt", "equipment", level, "light", 1, hp=5, sp=10, phyatk=8, phydef=8, athletics=7, slot=["be"]),
+        "warrior_ring": Item("Warrior Ring", "equipment", level, weight=0.1, sp=8, phyatk=7, phydef=5, athletics=3, slot=["r1", "r2"]),
         
         # Magic Caster
-        "caster_hat": Item("Magic Caster Hat", "equipment", level, "light", 1, mp=10, phydef=5, magdef=10, magatk=10, resistance=5, special=5, investigation=3),
-        "caster_robe": Item("Magic Caster Robe", "equipment", level, "light", 2, mp=8, phydef=8, magdef=15, magatk=15, resistance=5, special=5, investigation=2),
-        "caster_leggings": Item("Magic Caster Leggings", "equipment", level, "light", 2.5, mp=5, phydef=8, magdef=15, magatk=8, resistance=5, special=5, investigation=2),
-        "caster_boots": Item("Magic Caster Boots", "equipment", level, "light", 1, mp=3, phydef=4, magdef=8, magatk=8, agility=5, acrobatics=2, resistance=5, special=5, investigation=1),
-        "caster_gloves": Item("Magic Caster Gloves", "equipment", level, "light", 1, mp=3, phydef=3, magdef=5, magatk=8, resistance=5, special=5, investigation=1),
-        "magic_ring": Item("Magic Ring", "equipment", level, weight=0.1, mp=5, magatk=10, magdef=5, investigation=3),
-        "caster_belt": Item("Magic Caster Belt", "equipment", level, "light", 1, hp=5, mp=5, magatk=8, magdef=8, athletics=3),
+        "caster_hat": Item("Magic Caster Hat", "equipment", level, "light", 1, mp=10, phydef=5, magdef=10, magatk=10, resistance=5, special=5, investigation=3, slot=["h"]),
+        "caster_robe": Item("Magic Caster Robe", "equipment", level, "light", 2, mp=8, phydef=8, magdef=15, magatk=15, resistance=5, special=5, investigation=2, slot=["c"]),
+        "caster_leggings": Item("Magic Caster Leggings", "equipment", level, "light", 2.5, mp=5, phydef=8, magdef=15, magatk=8, resistance=5, special=5, investigation=2, slot=["l"]),
+        "caster_boots": Item("Magic Caster Boots", "equipment", level, "light", 1, mp=3, phydef=4, magdef=8, magatk=8, agility=5, acrobatics=2, resistance=5, special=5, investigation=1, slot=["s"]),
+        "caster_gloves": Item("Magic Caster Gloves", "equipment", level, "light", 1, mp=3, phydef=3, magdef=5, magatk=8, resistance=5, special=5, investigation=1, slot=["g"]),
+        "magic_ring": Item("Magic Ring", "equipment", level, weight=0.1, mp=5, magatk=10, magdef=5, investigation=3, slot=["r1", "r2"]),
+        "caster_belt": Item("Magic Caster Belt", "equipment", level, "light", 1, hp=5, mp=5, magatk=8, magdef=8, athletics=3, slot=["be"]),
         
         # Rouge
-        "leather_helmet": Item("Leather Helmet", "equipment", level, "light", 0.8, phydef=5, magdef=3, agility=8, perception=3, acrobatics=2, stealth=1),
-        "leather_tunic": Item("Leather Tunic", "equipment", level, "light", 1.5, phydef=8, magdef=4, agility=3, perception=2, acrobatics=2, stealth=2),
-        "leather_leggings": Item("Leather Leggings", "equipment", level, "light", 1, phydef=5, magdef=3, agility=10, perception=1, acrobatics=3, stealth=2),
-        "leather_boots": Item("Leather Boots", "equipment", level, "light", 0.5, phydef=5, magdef=3, agility=10, stealth=2, perception=1, sleight=1, acrobatics=3),
-        "leather_gloves": Item("Leather Gloves", "equipment", level, "light", 0.2, phydef=3, magdef=2, phyatk=5, sleight=5, stealth=2, finess=10),
-        "leather_belt": Item("Leather Belt", "equipment", level, "light", 1, athletics=3, hp=5, sp=10, phydef=3, magdef=3, acrobatics=-1),
+        "leather_helmet": Item("Leather Helmet", "equipment", level, "light", 0.8, phydef=5, magdef=3, agility=8, perception=3, acrobatics=2, stealth=1, slot=["h"]),
+        "leather_tunic": Item("Leather Tunic", "equipment", level, "light", 1.5, phydef=8, magdef=4, agility=3, perception=2, acrobatics=2, stealth=2, slot=["c"]),
+        "leather_leggings": Item("Leather Leggings", "equipment", level, "light", 1, phydef=5, magdef=3, agility=10, perception=1, acrobatics=3, stealth=2, slot=["l"]),
+        "leather_boots": Item("Leather Boots", "equipment", level, "light", 0.5, phydef=5, magdef=3, agility=10, stealth=2, perception=1, sleight=1, acrobatics=3, slot=["s"]),
+        "leather_gloves": Item("Leather Gloves", "equipment", level, "light", 0.2, phydef=3, magdef=2, phyatk=5, sleight=5, stealth=2, finess=10, slot=["g"]),
+        "leather_belt": Item("Leather Belt", "equipment", level, "light", 1, athletics=3, hp=5, sp=10, phydef=3, magdef=3, acrobatics=-1, slot=["be"]),
 
         # Tank
-        "plate_helmet": Item("Full-Plate Helmet", "equipment", level, "heavy", 3, phydef=10, magatk=5, perception=3, stealth=-2, sleight=-2, acrobatics=-1, agility=-3),
-        "plate_chestplate": Item("Full-Plate Chestplate", "equipment", level, "heavy", 6, phydef=15, magdef=8, perception=2, stealth=-4, sleight=-2, acrobatics=-3, agility=-5),
-        "plate_leggings": Item("Full-Plate Leggings", "equipment", level, "heavy", 5, phydef=10, magdef=5, perception=2, acrobatics=-2, stealth=-5, sleight=-1, agility=-5),
-        "plate_boots": Item("Full-Plate Boots", "equipment", level, "heavy", 2, phydef=8, magdef=4, perception=1, acrobatics=-2, agility=-5, stealth=-2, sleight=-1),
-        "plate_gloves": Item("Full-Plate Gloves", "equipment", level, "heavy", 2, phydef=8, magdef=4, perception=1, acrobatics=-1, finess=-20, stealth=-1, sleight=-5, agility=-1),
+        "plate_helmet": Item("Full-Plate Helmet", "equipment", level, "heavy", 3, phydef=10, magatk=5, perception=3, stealth=-2, sleight=-2, acrobatics=-1, agility=-3, slot=["h"]),
+        "plate_chestplate": Item("Full-Plate Chestplate", "equipment", level, "heavy", 6, phydef=15, magdef=8, perception=2, stealth=-4, sleight=-2, acrobatics=-3, agility=-5, slot=["c"]),
+        "plate_leggings": Item("Full-Plate Leggings", "equipment", level, "heavy", 5, phydef=10, magdef=5, perception=2, acrobatics=-2, stealth=-5, sleight=-1, agility=-5, slot=["l"]),
+        "plate_boots": Item("Full-Plate Boots", "equipment", level, "heavy", 2, phydef=8, magdef=4, perception=1, acrobatics=-2, agility=-5, stealth=-2, sleight=-1, slot=["s"]),
+        "plate_gloves": Item("Full-Plate Gloves", "equipment", level, "heavy", 2, phydef=8, magdef=4, perception=1, acrobatics=-1, finess=-20, stealth=-1, sleight=-5, agility=-1, slot=["g"]),
         
         # Weapons
-        "dwarvern_sword": Item("Dwarvern Sword", "equipment", level, "medium", 2, mp=5, phyatk=10, agility=-5, magatk=5, special=5, acrobatics=-2, intimidation=2),
-        "steel_sword": Item("Steel Sword", "equipment", level, "medium", 2, phyatk=15, agility=-5, acrobatics=-2, intimidation=2),
-        "steel_dagger": Item("Steel Dagger", "equipment", level, "light", 2, phyatk=7, agility=4, acrobatics=-1, intimidation=2),
-        "steel_scythe": Item("Steel Scythe", "equipment", level, "medium", 2, phyatk=20, agility=-10, acrobatics=-2, intimidation=2),
-        "grimoire": Item("Grimoire", "equipment", 2, None, 2, magatk=10, intimidation=2),
+        "dwarvern_sword": Item("Dwarvern Sword", "equipment", level, "medium", 2, mp=5, phyatk=10, agility=-5, magatk=5, special=5, acrobatics=-2, intimidation=2, slot=["rh", "lh"]),
+        "steel_sword": Item("Steel Sword", "equipment", level, "medium", 2, phyatk=15, agility=-5, acrobatics=-2, intimidation=2, slot=["rh", "lh"]),
+        "steel_dagger": Item("Steel Dagger", "equipment", level, "light", 2, phyatk=7, agility=4, acrobatics=-1, intimidation=2, slot=["rh", "lh"]),
+        "steel_scythe": Item("Steel Scythe", "equipment", level, "medium", 2, phyatk=20, agility=-10, acrobatics=-2, intimidation=2, slot=["rh", "lh"]),
+        "grimoire": Item("Grimoire", "equipment", 2, None, 2, magatk=10, intimidation=2, slot=["rh", "lh"]),
         
         # Foods
         "apple": Item("Apple", "item", 2, weight=0.1),
@@ -143,7 +145,10 @@ def item_list(item_name: str, level: int):
         "stamina_potion": Item("Potion of Stamina", "consumable", level, weight=0.5, sp=25, status_effects=[ef.effect_list("anti-resistance", 3, 1)]),
         "strength_potion": Item("Potion of Strength", "consumable", level, weight=0.5, status_effects=[ef.effect_list("strength", 3, 1)]),
         "swiftness_potion": Item("Potion of Swiftness", "consumable", level, weight=0.5, status_effects=[ef.effect_list("swiftness", 3, 1)]),
-        "healing_potion": Item("Healing Potion", "consumable", level, weight=0.5, hp=50, status_effects=[ef.effect_list("anti-resistance", 3, 1)])
+        "healing_potion": Item("Healing Potion", "consumable", level, weight=0.5, hp=50, status_effects=[ef.effect_list("anti-resistance", 3, 1)]),
+
+        # Unique
+        "spirit_bracelet": Item("Bracelet of Zauz", "equipment", level, "light", 0.2, hp=2, mp=10, magatk=4, magdef=4, athletics=2, slot=["br"])
 
     }
     item = items_list[item_name]

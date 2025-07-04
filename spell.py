@@ -18,7 +18,8 @@ class Spell():
                  cooldown: int = 0,
                  phydef: int = 0,
                  magdef: int = 0,
-                 hp: int = 0
+                 hp: int = 0,
+                 is_max: bool = False  #  Does the spell work it's affect as a % of max stats?
                  ):
         self.name = name
         self.type = type
@@ -34,9 +35,20 @@ class Spell():
         self.use_mp = use_mp
         self.use_sp = use_sp
         self.cooldown = cooldown
+        self.hp = hp
+        self.phydef = phydef
+        self.magdef = magdef
+        self.is_max = is_max
 
     def __repr__(self) -> str:
         return (f"Name: {self.name}, Type: {self.type}, Tier: {self.tier}, Effect: {self.effect}, Duration: {self.time}, Attribute: {self.attribute}")
+
+    def barrier(self, effect, player):
+        if self.is_max:
+            self.hp = effect*player.new_hp*0.01
+            self.new_hp = self.hp
+        else:
+            self.new_hp = effect
 
 def spell_list(spell_name):
     spells_list = {
@@ -48,7 +60,8 @@ def spell_list(spell_name):
         "earth_blast": Spell("Earth Blast", "Magical", 2, -4, 1, "magatk", "Earth", True),
         "thunderlance": Spell("Thunderlance", "Magical", 3, -8, 2, "magatk", "Thunder", True, status=[ef.effect_list("shock", 2, 1, True), ef.effect_list("stun", 1, 0.3)]),
         "greater_pact": Spell("Greater Pact", "Buff", 5, 5, 3, "magatk", "Holy", True, status=[ef.effect_list("increase_all_stats", 3, 1), ef.effect_list("increase_all_skills", 3, 1)], karma=-30, cooldown=3),
-        "doomed_prophecy": Spell("Doomed Prophecy", "Magical", 6, 5, 3, "magatk", "Holy", True, "AOE", status=[ef.effect_list("increase_all_stats", 3, 1, use_religion="Vorgoth"), ef.effect_list("increase_all_skills", 3, 1, use_religion="Vorgoth")], karma=-20)
+        "doomed_prophecy": Spell("Doomed Prophecy", "Magical", 6, 5, 3, "magatk", "Holy", True, "AOE", status=[ef.effect_list("increase_all_stats", 3, 1, use_religion="Vorgoth"), ef.effect_list("increase_all_skills", 3, 1, use_religion="Vorgoth")], karma=-20),
+        "glimmering_shield": Spell("Glimmering Shield", "Barrier", 3, 10, 3, "magatk", "Mana", True, status=[ef.effect_list("glimmering_shield", 3, 1)], is_max=True)
     }
     spell = spells_list[spell_name]
     return spell
