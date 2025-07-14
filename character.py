@@ -113,6 +113,7 @@ class Character():
         self.silver = silver
         self.bronze = bronze
         self.max_weight = max_weight
+        self.vassel = None
         self.karma = self.new_karma = self.max_karma = karma
         self.race_type = race_type
         self.religion = gl.capitalize_string(religion, " ")

@@ -1,4 +1,5 @@
 import failsafe as fs
+import gamelogic as gl
 from colorama import Fore, Style, init
 init(autoreset=True)
 
@@ -98,6 +99,10 @@ class Effect():
         self.new_karma = karma
         self.karma = karma
         self.use_religion = religion
+    
+    def __repr__(self):
+        name = gl.uncapitalize_string(self.name, " ")
+        return f"['{name}', {self.time}, {self.success}, {self.is_effect}, {self.use_religion}, {self.affect_max}, {self.effect}, {self.spell_effect}]"
     
     def edit(self, player: object):
         while True:
@@ -202,12 +207,18 @@ class Effect():
         self.new_sleight = round(self.sleight*(p.max_sleight if self.affect_max else self.bonus))
         self.new_investigation = round(self.investigation*(p.max_investigation if self.affect_max else self.bonus))
         self.new_insight = round(self.insight*(p.max_insight if self.affect_max else self.bonus))
-        self.new_perception = round(self.perception*(p.max_preception if self.affect_max else self.bonus))
+        self.new_perception = round(self.perception*(p.max_perception if self.affect_max else self.bonus))
         self.new_deception = round(self.deception*(p.max_deception if self.affect_max else self.bonus))
         self.new_intimidation = round(self.intimidation*(p.max_intimidation if self.affect_max else self.bonus))
         self.new_persuasion = round(self.persuasion*(p.max_persuasion if self.affect_max else self.bonus))
         self.new_performance = round(self.performance*(p.max_performance if self.affect_max else self.bonus))
         self.new_karma = round(self.karma*(p.max_karma if self.affect_max else self.bonus))
+
+    def update_effect(self, effect: int) -> None:
+        if self.ept:
+            self.effect *= round(effect)
+        else:
+            self.effect = effect
 
 def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False, use_religion: str = None, affect_max: bool = False):
     effects_list = {

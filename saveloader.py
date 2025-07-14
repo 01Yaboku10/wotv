@@ -4,14 +4,15 @@ import character as ch
 import failsafe as fs
 import google_sheet as gs
 import item as it
-import character as ch
 import racial_classes as rc
 import job_classes as jc
 import gamelogic as gl
 import saveloader as sl
+import obstacle as ob
 import copy
 import effects as ef
 import ast
+import spell as sp
 
 init(autoreset=True)
 
@@ -44,6 +45,7 @@ def save_all(directory: str, players: list[object]):
         for line in lines:
             save.write(line)
     for player in players:
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Saving {player.firstname}")
         save_character(directory, player)
     if save_check(file_path):
         os.remove(true_path)
@@ -64,9 +66,13 @@ def save_character(directory: str, character: object):
         for line in lines:
             if line.startswith("*"):
                 continue
-            for index, spirit in enumerate(c.spirits):
-                if not fs.is_type(spirit, str):
-                    c.spirits[index] = spirit.id
+            spirits = []
+            if not c.character_type == "spirit":
+                for index, spirit in enumerate(c.spirits):
+                    if not fs.is_type(spirit, int):
+                        spirits.append(spirit.id)
+                    else:
+                        spirits.append(spirit)
             if f"ID:{c.id}" in line:
                 save.write(f"//ID:{c.id}"
                             f"//Firstname:{c.firstname}"
@@ -78,7 +84,7 @@ def save_character(directory: str, character: object):
                             f"//Residence:{c.residence}"
                             f"//Attribute:{c.attribute}"
                             f"//BalanceBreaker:{c.balance_breaker}"
-                            f"//Spirits:{c.spirits}"
+                            f"//Spirits:{spirits}"
                             f"//Master:{c.master}"
                             f"//VasselSlot:{c.equip_slot}"
                             f"//Races:{c.racial_classes}"
@@ -503,15 +509,18 @@ def update_sheet(player: object):
     gs.google_batch_update(sheet, update_requests)
 
 
-def load_spirits(players: list[object]) -> list[object]:
+def load_spirits(players: list[object], load: bool = False) -> list[object]:
     summons = []
     for p in players:
         player_spirits = []
         print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Uploading Spirits for {p.prefix}...")
         for index, spirit in enumerate(p.spirits):
+            if not fs.is_type(spirit, int):
+                spirit = spirit.id
             summon = ch.character_dic[str(spirit)]
-            summon.prefix = input(f"Assign Prefix for Spirit {summon.firstname}: ").upper()
-            summon.vassel = False
+            if not load:
+                summon.prefix = input(f"Assign Prefix for Spirit {summon.firstname}: ").upper()
+                summon.vassel = False
             summons.append(summon)
             player_spirits.append(summon)
             for attrib in summon.attribute:
@@ -601,6 +610,7 @@ def load_scenario(scenario_name: str):
     assigned_players = []
     player_objects = []
     player_prefixes = {}
+    player_effects = []
 
     file_path = os.path.join("scenario_saves", scenario_name)
     if not os.path.exists(file_path):
@@ -611,7 +621,8 @@ def load_scenario(scenario_name: str):
         "Name": "name",
         "Mode": "mode",
         "Turn": "turn",
-        "Player Turn": "playerturn"
+        "Player Turn": "playerturn",
+        "Obstacles": "obstacles"
     }
 
     scenario_data = {
@@ -619,7 +630,8 @@ def load_scenario(scenario_name: str):
         'turn': 0,
         'players': [],
         'playerturn': 0,
-        'mode': None
+        'mode': None,
+        'obstacles': {}
     }
 
     attribute_map = {
@@ -644,12 +656,34 @@ def load_scenario(scenario_name: str):
         "Intimidation": "new_intimidation",
         "Persuasion": "new_persuasion",
         "Performance": "new_performance",
+        "MAX Karma": "max_karma",
+        "MAX HP": "max_hp",
+        "MAX MP": "max_mp",
+        "MAX SP": "max_sp",
+        "MAX PHY.ATK": "max_phyatk",
+        "MAX PHY.DEF": "max_phydef",
+        "MAX Agility": "max_agility",
+        "MAX Finess": "max_finess",
+        "MAX MAG.ATK": "max_magatk",
+        "MAX MAG.DEF": "max_magdef",
+        "MAX Resistance": "max_resistance",
+        "MAX Special": "max_special",
+        "MAX Athletics": "max_athletics",
+        "MAX Acrobatics": "max_acrobatics",
+        "MAX Stealth": "max_stealth",
+        "MAX Sleight": "max_sleight",
+        "MAX Perception": "max_perception",
+        "MAX Deception": "max_deception",
+        "MAX Intimidation": "max_intimidation",
+        "MAX Persuasion": "max_persuasion",
+        "MAX Performance": "max_performance",
         "Status Effects": "status_effects",
         "Team": "team",
         "Prefix": "prefix",
         "Initiative": "initiative",
         "Cooldowns": "cooldowns",
-        "Barriers": "barriers"
+        "Barriers": "barriers",
+        "Vassel": "vassel",
     }
 
     with open(file_path, "r", encoding="utf-8") as file:
@@ -670,7 +704,22 @@ def load_scenario(scenario_name: str):
                         continue
                     var_name = scenario_map[key]
 
-                    if value.isdigit():
+                    if key in ["Obstacles"]:
+                        obstacles_dict = {}
+                        obstacles: list[list[str, str, int]] = ast.literal_eval(value)  # Prefix, Name, HP
+                        for obs in obstacles:
+                            prefix, name, hp = obs
+                            obstacle: object = ob.obstacle_list(name)
+                            obstacle.prefix = prefix
+                            obstacle.new_hp = obstacle.max_hp = hp
+                            obstacle.new_phydef = obstacle.max_phydef = obstacle.phydef
+                            obstacle.new_magdef = obstacle.max_magdef = obstacle.magdef
+                            obstacle.status_effects = []
+                            obstacle.cooldowns = {}
+                            obstacle.barriers = []
+                            obstacles_dict[prefix] = obstacle
+                        scenario_data[var_name] = obstacles_dict
+                    elif value.isdigit():
                         scenario_data[var_name] = int(value)  # For integers
                     else:
                         scenario_data[var_name] = value  # For strings
@@ -699,12 +748,34 @@ def load_scenario(scenario_name: str):
                     'new_intimidation': 0,
                     'new_persuasion': 0,
                     'new_performance': 0,
+                    'max_karma': 0,
+                    'max_hp': 0,
+                    'max_mp': 0,
+                    'max_sp': 0,
+                    'max_phyatk': 0,
+                    'max_phydef': 0,
+                    'max_agility': 0,
+                    'max_finess': 0,
+                    'max_magatk': 0,
+                    'max_magdef': 0,
+                    'max_resistance': 0,
+                    'max_special': 0,
+                    'max_athletics': 0,
+                    'max_acrobatics': 0,
+                    'max_stealth': 0,
+                    'max_sleight': 0,
+                    'max_perception': 0,
+                    'max_deception': 0,
+                    'max_intimidation': 0,
+                    'max_persuasion': 0,
+                    'max_performance': 0,
                     'status_effects': [],
                     'cooldowns': {},
                     'barriers': [],
                     'initiative': 0,
                     'team': None,
                     'prefix': "foo",
+                    'vassel': False
                 }
 
                 info = line.split("/&/")
@@ -712,6 +783,8 @@ def load_scenario(scenario_name: str):
 
                 p_id = info[0].split(":")[1] # Expects Player ID in the first attribute
                 player: object = ch.character_dic.get(str(p_id))  # PLAYER
+                player.barriers = []
+                player.cooldowns = {}
                 if player is None:
                     print(f"{Fore.RED}[WARNING]{Style.RESET_ALL} PLAYER NOT FOUND, SKIPPING PLAYER WITH ID {p_id}")
                     continue
@@ -729,17 +802,33 @@ def load_scenario(scenario_name: str):
                     var_name = attribute_map[key]
 
                     if key in ["Status Effects"]:
-                        effects: list[tuple[str, int, float, bool, str, bool]] = ast.literal_eval(value)
+                        effects: list[list[str, int, float, bool, str, bool, int, int]] = ast.literal_eval(value)  # Name, turns, success, use_effect, use_religion, affect_max, effect, spell_effect
                         status_effects: list = []
                         if effects:
                             for effect in effects:
+                                effect_seff = effect.pop()
+                                effect_eff = effect.pop()
                                 status_effect: object = ef.effect_list(*effect)
                                 status_effects.append(status_effect)
+                                status_effect.effect = effect_eff
+                                status_effect.spell_effect = effect_seff
+                                status_effect.apply_bonus(player)
                         character_data[var_name] = status_effects
                     elif key in ["Cooldowns"]:
                         character_data[var_name] = ast.literal_eval(value)
+                    elif key in ["Vassel"]:
+                        if player.character_type == "spirit":
+                            character_data[var_name] = ast.literal_eval(value)
+                        else:
+                            character_data[var_name] = None
                     elif key in ["Barriers"]:
                         barriers: list[tuple[str, int, int, int, int]] = ast.literal_eval(value)  # (name, turns, hp, phydef, magdef)
+                        for barrier in barriers:
+                            s_name, s_turns, s_hp, s_phydef, s_magdef = barrier
+                            upload_barrier = sp.Spell(s_name, "Barrier", 1, 1, s_turns, "magatk", "Mana", True, hp=s_hp, phydef=s_phydef, magdef=s_magdef, status=[ef.effect_list(s_name, s_turns, 1)])
+                            upload_barrier.new_hp = s_hp
+
+                            player_effects.append(upload_barrier)
                     elif value.isdigit():
                         character_data[var_name] = int(value)  # For integers
                     else:
@@ -754,6 +843,11 @@ def load_scenario(scenario_name: str):
                 # Update attributes on character
                 for attr, value in character_data.items():
                     setattr(assigned_player, attr, value)
+                for effe in player_effects:
+                    for bari in effe.statuses:
+                        assigned_player.status_effects.append(bari)
+                    assigned_player.barriers.append(effe)
+                assigned_player.cooldowns = character_data["cooldowns"]
 
                 if assigned_player.id in assigned_players:
                     print(f"{Fore.RED}[WARNING]{Style.RESET_ALL} Player is already registered, registgering multiple")
@@ -766,6 +860,92 @@ def load_scenario(scenario_name: str):
                     assigned_players.append(assigned_player.id)
                 player_objects.append(assigned_player)
                 player_prefixes[character_data["prefix"]] = assigned_player
-        scenario = (scenario_data["name"], scenario_data["turn"], player_objects, scenario_data["playerturn"], scenario_data["mode"])
+                player_effects.clear()
+        scenario = (scenario_data["name"], scenario_data["turn"], player_objects, scenario_data["playerturn"], scenario_data["mode"], scenario_data["obstacles"])
     
     return assigned_players, player_objects, player_prefixes, scenario
+
+def save_scenario(scenario: object) -> None:
+    create_savefolder("scenario_saves")
+    s: object = scenario
+    save_file: str = f"scenario_{s.name}.txt"
+    file_path = os.path.join("scenario_saves", save_file)
+
+    # CHECK IF FILE EXISTS
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    
+    with open(file_path, "w", encoding="utf-8") as save:
+        # INIT
+        obstacles = []
+        for key, obs in s.obstacles.items():
+            obstacles.append([key, gl.uncapitalize_string(obs.firstname, " "), obs.new_hp])
+
+        save.write(f"Init/&/"
+                   f"Name:{s.name}"
+                   f"//Mode:{s.mode}"
+                   f"//Turn:{s.turn}"
+                   f"//Player Turn:{s.playerturn}"
+                   f"//Obstacles:{obstacles}\n")
+        
+        # PLAYERS
+        for p in s.players:
+            effects: list[object] = [eff for eff in p.status_effects]
+            barriers: list[str] = [bari.barrier_repr for bari in p.barriers]
+            save.write(f"Player/&/"
+                       f"ID:{p.id}"
+                       f"//Initiative:{p.initiative}"
+                       f"//Karma:{p.new_karma}"
+                       f"//HP:{p.new_hp}"
+                       f"//MP:{p.new_mp}"
+                       f"//SP:{p.new_sp}"
+                       f"//PHY.ATK:{p.new_phyatk}"
+                       f"//PHY.DEF:{p.new_phydef}"
+                       f"//Agility:{p.new_agility}"
+                       f"//Finess:{p.new_finess}"
+                       f"//MAG.ATK:{p.new_magatk}"
+                       f"//MAG.DEF:{p.new_magdef}"
+                       f"//Resistance:{p.new_resistance}"
+                       f"//Special:{p.new_special}"
+                       f"//Athletics:{p.new_athletics}"
+                       f"//Acrobatics:{p.new_acrobatics}"
+                       f"//Stealth:{p.new_stealth}"
+                       f"//Sleight:{p.new_sleight}"
+                       f"//Investigation:{p.new_investigation}"
+                       f"//Insight:{p.new_insight}"
+                       f"//Perception:{p.new_perception}"
+                       f"//Deception:{p.new_deception}"
+                       f"//Intimidation:{p.new_intimidation}"
+                       f"//Persuasion:{p.new_persuasion}"
+                       f"//Performance:{p.new_performance}"
+                       f"//MAX Karma:{p.max_karma}"
+                       f"//MAX HP:{p.max_hp}"
+                       f"//MAX MP:{p.max_mp}"
+                       f"//MAX SP:{p.max_sp}"
+                       f"//MAX PHY.ATK:{p.max_phyatk}"
+                       f"//MAX PHY.DEF:{p.max_phydef}"
+                       f"//MAX Agility:{p.max_agility}"
+                       f"//MAX Finess:{p.max_finess}"
+                       f"//MAX MAG.ATK:{p.max_magatk}"
+                       f"//MAX MAG.DEF:{p.max_magdef}"
+                       f"//MAX Resistance:{p.max_resistance}"
+                       f"//MAX Special:{p.max_special}"
+                       f"//MAX Athletics:{p.max_athletics}"
+                       f"//MAX Acrobatics:{p.max_acrobatics}"
+                       f"//MAX Stealth:{p.max_stealth}"
+                       f"//MAX Sleight:{p.max_sleight}"
+                       f"//MAX Investigation:{p.max_investigation}"
+                       f"//MAX Insight:{p.max_insight}"
+                       f"//MAX Perception:{p.max_perception}"
+                       f"//MAX Deception:{p.max_deception}"
+                       f"//MAX Intimidation:{p.max_intimidation}"
+                       f"//MAX Persuasion:{p.max_persuasion}"
+                       f"//MAX Performance:{p.max_performance}"
+                       f"//Status Effects:{effects}"
+                       f"//Team:{p.team}"
+                       f"//Prefix:{p.prefix}"
+                       f"//Cooldowns:{p.cooldowns}"
+                       f"//Barriers:{barriers}"
+                       f"//Vassel:{p.vassel}\n")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character {p.prefix} {p.firstname} saved in scenario.")
+    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Scenario {s.name} saved successfuly.")

@@ -19,7 +19,8 @@ class Spell():
                  phydef: int = 0,
                  magdef: int = 0,
                  hp: int = 0,
-                 is_max: bool = False  #  Does the spell work it's affect as a % of max stats?
+                 is_max: bool = False,  #  Does the spell work it's affect as a % of max stats?
+                 destroy: bool = False  #  Extra Damage towards obstacles?
                  ):
         self.name = name
         self.type = type
@@ -39,9 +40,13 @@ class Spell():
         self.phydef = phydef
         self.magdef = magdef
         self.is_max = is_max
+        self.destroy = destroy
 
     def __repr__(self) -> str:
         return (f"Name: {self.name}, Type: {self.type}, Tier: {self.tier}, Effect: {self.effect}, Duration: {self.time}, Attribute: {self.attribute}")
+    
+    def barrier_repr(self) -> str:
+        return f"({self.name}, {self.time}, {self.new_hp}, {self.phydef}, {self.magdef})"
 
     def barrier(self, effect, player):
         if self.is_max:
