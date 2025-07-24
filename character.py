@@ -9,6 +9,11 @@ id_list = []
 character_dic = {}
 init(autoreset=True)
 
+# ID Accounts:
+# 0000: Characters
+# 5000: Summons
+# 9000: Obstacles
+
 class Character():
     def __init__(self,
                  id: int,
@@ -43,7 +48,7 @@ class Character():
                  balance_breaker: list[str] = None,
                  occupation: str = None,
                  nicknames: list[str] = None,
-                 race_type: str = None,
+                 race_type: list[str, str] = None,
                  summons: list[tuple[object, int]] = None,  # Is empty on start
                  gold: int = 0,
                  silver: int = 0,
@@ -115,7 +120,7 @@ class Character():
         self.max_weight = max_weight
         self.vassel = None
         self.karma = self.new_karma = self.max_karma = karma
-        self.race_type = race_type
+        self.race_type = race_type if race_type is not None else ["", "alive"]
         self.religion = gl.capitalize_string(religion, " ")
         self.level = 0
         self.hp = self.new_hp = self.max_hp = hp
@@ -143,6 +148,9 @@ class Character():
         self.team = None
         self.effect = effect
         self.initiative = 0
+        self.cooldowns = {}
+        self.prefix = None
+        self.save = 1
 
         self.emcumberment = 0
         self.weight = 0
@@ -150,6 +158,8 @@ class Character():
         self.race_type_list = []
         self.armor_classes = []
         self.armor_class = "None"
+
+        self.undead_list = ["skeleton", "zombie", "dark_wisdom"]
 
         if self.character_type != "Barrier":
             self.update_race()
@@ -166,7 +176,7 @@ class Character():
             if not self.error:
                 print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character Creation: {Fore.GREEN}Success{Style.RESET_ALL}")
             else:
-                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character Creation: {Fore.GREEN}Failed{Style.RESET_ALL}")
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character Creation: {Fore.RED}Failed{Style.RESET_ALL}")
 
     def __repr__(self) -> str:
         return (
@@ -241,6 +251,10 @@ class Character():
         )
 
     def id_check(self):
+        if not self.racial_classes:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Summon with dependencies found... Skipping registry")
+            self.error = True
+            return
         if self.id not in id_list:
             print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} {self.firstname}'s id set to {self.id}")
         else:
@@ -567,14 +581,18 @@ class Character():
 
     def race_check(self):
         if "heteromorph" in self.race_type_list:
-            self.race_type = "heteromorph"
-            return
-        if "demi-human" in self.race_type_list:
-            self.race_type = "demi-human"
-            return
-        self.race_type = "humanoid"
+            self.race_type[0] = "heteromorph"
+        elif "demi-human" in self.race_type_list:
+            self.race_type[0] = "demi-human"
+        else:
+            self.race_type[0] = "humanoid"
 
-        if fs.is_attrib(self, "race_type"):
+        for race in self.racial_classes:
+            name, level = race
+            if name in self.undead_list:
+                self.race_type[1] = "undead"
+
+        if fs.is_attrib(self, "race_type") and self.race_type:
             print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Race Type Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
         else:
             print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Race Type Check: {Fore.RED}[FAILED]{Style.RESET_ALL}")
@@ -671,7 +689,7 @@ class Character():
 
             self.race_type_list.append(race.type)
 
-        if fs.is_attrib(self, "racial_classes") and fs.is_type(self.racial_classes, list):
+        if fs.is_attrib(self, "racial_classes") and fs.is_type(self.racial_classes, list) and self.racial_classes:
             print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Race Class Check: {Fore.GREEN}[Completed]{Style.RESET_ALL}")
         else:
             print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Race Class Check: {Fore.RED}[FAILED]{Style.RESET_ALL}")
@@ -1103,6 +1121,8 @@ class Character():
     def status_apply(self, effect: object, spell_effect: int):
         if effect.is_effect:
             effect.spell_effect=spell_effect
+            if effect.activate_unique:
+                effect.init()
         effect.apply_bonus(self)
         self.new_hp += effect.new_hp
         self.new_mp += effect.new_mp
@@ -1152,6 +1172,20 @@ class Character():
             self.max_performance += effect.new_performance
             self.max_karma += effect.new_karma
 
+    def attribute_add(self, attribute: str, effect: int, do_print: bool = False):
+        """Use this to ensure no heal/effect exceeds MAX of an attribute"""
+        new_attrib: int = getattr(self, f"new_{attribute}")
+        max_attrib: int = getattr(self, f"max_{attribute}")
+        if new_attrib+effect > max_attrib:
+            updated_attrib = max_attrib
+        else:
+            new_attrib += effect
+            updated_attrib = new_attrib
+        setattr(self, f"new_{attribute}", updated_attrib)
+        if do_print:
+            heal = "healed" if updated_attrib > 0 else "damaged"
+            print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {self.prefix} {self.firstname} was {heal} and now has {self.new_hp}/{self.max_hp} HP")
+
     def ability_apply(self, ability: object):
         if ability.is_per:
             ability.apply_per(self)
@@ -1171,3 +1205,36 @@ class Character():
         else:
             for stat in gl.STATS + gl.SKILLS:
                 setattr(self, f"new_{stat}", getattr(self, f"new_{stat}")-getattr(ability, stat))
+
+def character_list(key: str = None, race_class: list[tuple[str, int]] = None, job_class: list[tuple[str, int]] = None) -> list[str, object]:
+    has_dependencies: list[str] = ["5001"]
+    chara_dic = {
+        "5001": Character(5001, "Beacon", "of The Fox", ["Light"], 0, None, race_class, job_class, character_type="summon")
+    }
+    if key is not None:
+        try:
+            character = chara_dic[key]
+        except KeyError:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character could not be found... Skipping")
+            return None
+        return {key: character}
+    else:
+        char_dic = {}
+        for key, value in chara_dic.items():
+            if key in has_dependencies:
+                continue
+            char_dic[key] = value
+        return char_dic
+
+def list_combine(chara_dic: dict[str, object]) -> None:
+    if not chara_dic:
+        return
+    for key, value in chara_dic.items():
+        if key in character_dic:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character already found in dictionary... Skipping")
+            continue
+        if value.id in id_list:
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character already found in ID list... Skipping")
+            continue
+        character_dic[key] = value
+        id_list.append(value.id)

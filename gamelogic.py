@@ -17,6 +17,16 @@ def log_clear():
     else:
         os.system("clear")
 
+def print_debugg(category: str, message: str):
+    category = category.upper()
+    if category == "ERROR":
+        fore = Fore.RED
+    elif category == "NOTE":
+        fore = Fore.BLUE
+    else:
+        fore = Fore.GREEN
+    print(f"{fore}[{category.upper()}]{Style.RESET_ALL} {message}")
+
 def capitalize_string(string: str, splitter: str) -> str:
     new_string = ""
     if string is not None:
@@ -34,6 +44,16 @@ def uncapitalize_string(string: str, splitter: str) -> str:
         return new_string.removesuffix("_")
     else:
         return None
+
+def opponent_assign(players: list[object]) -> list[object]:
+    opponents: list[object] = []
+    while True:
+        opponent = input("Add opponent with Prefix ID [D]one: ").upper().strip()
+        if opponent == "D":
+            break
+        if opponent not in opponents and opponent in players:
+            opponents.append(players.get(opponent))
+    return opponents
 
 def team_assign(players: list[object]) -> tuple[list[object], list[object]]:
     print("---------=Assign Teams=---------")

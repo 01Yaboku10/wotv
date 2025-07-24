@@ -98,9 +98,11 @@ def character_creation():
     edit_character(player)
 
 def lookup_character():
-    chara = input("Lookup character with id: ")
-    if not fs.is_player(chara):
-        return
+    while True:
+        chara = input("Lookup character with id: ")
+        if not fs.is_player(chara):
+            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Character with id {chara} not found in the registry.")
+        break
     print(ch.character_dic.get(chara))
     character_menu()
 

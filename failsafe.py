@@ -6,6 +6,7 @@ import spell as sp
 import item as it
 import abilities as ab
 import obstacle as ob
+import flooreffect as fe
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -66,6 +67,8 @@ def is_race(race: str) -> bool:
         return False
     
 def is_spell(spell: str) -> bool:
+    spell = spell.strip().lower()
+
     try:
         return sp.spell_list(spell)
     except KeyError:
@@ -77,6 +80,13 @@ def is_obstacle(obstacle: str) -> bool:
         return ob.obstacle_list(obstacle)
     except KeyError:
         print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Obstacle does not exist")
+        return False
+
+def is_floor(floor: str) -> bool:
+    try:
+        return fe.floor_list(floor)
+    except KeyError:
+        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Floor Effect does not exist")
         return False
 
 def is_ability(ability: str) -> bool:

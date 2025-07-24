@@ -11,6 +11,7 @@ import saveloader as sl
 import manu as menu
 import sound as sd
 import obstacle as ob
+import flooreffect as fe
 
 init(autoreset=True)
 
@@ -25,6 +26,7 @@ class Game():
             self.assigned_players, self.player_objects, self.player_prefixes = gl.player_assign()
             self.spirits: list[object] = sl.load_spirits(self.player_objects)
             self.obstacle_prefixes: dict[str, object] = {}
+            self.floor_prefixes: dict[str, object] = {}
             for spirit in self.spirits:
                 self.player_prefixes[spirit.prefix] = spirit
                 self.player_objects.append(spirit)
@@ -60,6 +62,7 @@ class Game():
             self.scenario = Scenario(*sc)
             self.spirits: list[object] = sl.load_spirits(self.player_objects, True)
             self.obstacle_prefixes: dict[str, object] = self.scenario.obstacles
+            self.floor_prefixes: dict[str, object] = self.scenario.floor
             self.summons: list[object] = sl.load_summons()
             self.initiative_list = []
             print("---------=Teams=---------")
@@ -147,8 +150,9 @@ class Game():
             player_effects = player.status_effects[:]
             for effect in player_effects:
                 if effect.ept:
-                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Player {player.prefix} {player.firstname} took {round(effect.effect)} damage from {effect.name}")
-                    player.new_hp += round(effect.effect)
+                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Player {player.prefix} {player.firstname} took {round(effect.effect)} damage/heal from {effect.name}")
+                    # player.new_hp += round(effect.effect)
+                    player.attribute_add("hp", round(effect.effect))
                 if effect.time_left <= 0:
                     effect.remove(player)
                     player.status_effects.remove(effect)
@@ -168,6 +172,19 @@ class Game():
                 del player.cooldowns[spell]
                 print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {player.prefix} {player.firstname} can now use {spell} again")
         sl.update_sheet(player)
+    
+    def floor_update(self):
+        del_list: list[str] = []
+        for key, floor in self.floor_prefixes.items():
+            if floor.time > 0:
+                floor.time -= 1
+            elif floor.time != -1:
+                del_list.append(key)
+        if not del_list:
+            return
+        for floor in del_list:
+            del self.floor_prefixes[floor]
+            print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} The Floor Effect {floor} has vanished.§")
     
     def summon_update(self, player: object):
         if player.summons:
@@ -319,6 +336,7 @@ class Game():
                 break
 
     def gamemode_adventure(self):
+        self.removed_players = []
         sd.sound_menu("ambiance")
         while True:
             print("---------=Adventure=---------")
@@ -389,6 +407,7 @@ class Game():
                 print(f"---------=[{player.prefix}] {player.firstname}'s Turn=---------")
                 if not start:
                     self.status_update(player)
+                    self.floor_update()
                 start = False
                 self.power_check(player)
                 if player.status_effects:
@@ -476,13 +495,20 @@ class Game():
             print(f"[{index+1}] {spirit.firstname} Vassel: {spirit.vassel}")
         
         while True:
-            choice = fs.is_int(input("Spirit ID: "))
+            choice = input("Spirit ID [B]ack: ").upper().strip()
+
+            if choice == "B":
+                return
+
+            choice = fs.is_int(choice)
             if 1<=choice<=len(player.spirits):
                 spirit: object = player.spirits[choice-1]
                 reversion = "[R]evert" if spirit.vassel else "[C]ome"
                 while True:
-                    choice = input(f"{reversion}, [S]kill: ").upper()
-                    if choice == "R" and spirit.vassel:
+                    choice = input(f"{reversion}, [S]kill, [B]ack: ").upper().strip()
+                    if choice == "B":
+                        break
+                    elif choice == "R" and spirit.vassel:
                         spirit.vassel = False
                         print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {spirit.surname} ({spirit.firstname}) Has been reverted back into their natural form.")
                         if not spirit.equip_slot:
@@ -509,12 +535,15 @@ class Game():
                     elif choice == "S":
                         self.spell_action(spirit)
                         break
-            break
+            if choice == "B":
+                continue
+            else:
+                break
 
     def summon(self, player: object, entity: object, time: int):
         while True:
             prefix = input(f"Assign prefix for {entity.firstname}: ").upper()
-            if prefix in self.player_prefixes:
+            if any(prefix in lst for lst in [self.player_prefixes, self.obstacle_prefixes, self.floor_prefixes]):
                 print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} The prefix {prefix} is already in use...")
             else:
                 entity.prefix = prefix
@@ -524,12 +553,13 @@ class Game():
         self.player_objects.append(entity)
         self.player_prefixes[entity.prefix] = entity
         self.add_stats([entity])
-        self.generate_initiative()
+        if self.scenario.mode == "battle":
+            self.generate_initiative()
 
     def spell_action(self, player: object, cast_spell: str = None):
         if cast_spell is None:
             while True:
-                cast_spell = input("Cast spell: ")
+                cast_spell = input("Cast spell: ").lower().strip()
                 if fs.is_spell(cast_spell):
                     cooldown = fs.is_cooldown(player, cast_spell)
                     if not cooldown:
@@ -539,7 +569,11 @@ class Game():
                         return
                 else:
                     print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Spell not found, Try again...")
-        spell = sp.spell_list(cast_spell)
+        spell: object = sp.spell_list(cast_spell)
+
+        #  NOTE
+        if spell.note is not None:
+            gl.print_debugg("NOTE", spell.note)
 
         #  ENCHANTMENT
         if self.hit_player < 0:
@@ -591,149 +625,291 @@ class Game():
             self.sp_cost = sp_cost
             self.mp_cost = mp_cost
             
-        #  OPPONENT SELECTION
-        opponent_list = []
-        if spell.type == "self_buff":
-            opponent_list.append = player.prefix
-        else:
-            while True:
-                opponent = input("Opponent Prefix ID ([D]one): ").upper()
-                if opponent == "D":
-                    break
-                if opponent in self.player_prefixes or opponent in self.obstacle_prefixes:
-                    if opponent in self.player_prefixes:
-                        opponent: object = self.player_prefixes[opponent]
-                    else:
-                        opponent: object = self.obstacle_prefixes[opponent]
-                    opponent_list.append(opponent)
-                    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} {opponent.prefix} {opponent.firstname} added to opponent_list")
+        loop = 1
+        if "TWIN" in self.spell_enchantments:
+            loop = 2
+        elif "TRIPLET" in self.spell_enchantments:
+            loop = 3
 
-        #  ATTACK AND SAVE ROLL
-        if self.hit_player < 0:
-            dice = fs.is_int(input(f"Dice Roll (D{fs.spell_dice(spell.tier)}): "))
-        else:
-            dice = self.new_dice
-        for opp in opponent_list:
-            if getattr(opp, "character_type") != "Barrier" and spell.type != "Barrier":
-                save = input(f"Save throw for opponent {opp.prefix} {opp.firstname}. [S]pell: ").upper()
-                if save == "S":
-                    self.spell_action(opp)
-                else:
-                    opp.save = fs.is_int(save)
+        for lop in range(1, loop+1):
+            #  OPPONENT SELECTION
+            opponent_list = []
+            if spell.type == "self_buff":
+                opponent_list.append = player.prefix
             else:
-                opp.save = 1
-
-        #  STATUS EFFECT ROLL
-        if not spell.statuses is None:
-            for effect in spell.statuses:
-                if effect.success != 1:
-                    status_dice = fs.is_int(input(f"Status roll for {effect.name} (D20): "))
-                    if (status_dice/20)>=(1-effect.success):
-                        effect.is_active = True
-                else:
-                    effect.is_active = True
-        
-        #  DAMAGE DEALING
-        for oppon in opponent_list:  #  Saving throw is either reduction or nullification
-            if spell.multiplier == "phyatk":
-                caster_multiplier = player.new_phyatk
-                opponent_multiplier = oppon.new_phydef
-                barrier_multiplier = "phydef"
-            else:
-                caster_multiplier = player.new_magatk
-                opponent_multiplier = oppon.new_magdef
-                barrier_multiplier = "magdef"
-
-            save_reduction = (((int(dice) * 3) - int(oppon.save)) / (int(dice) * 3)) if (((int(dice) * 2) - int(oppon.save))) > 0 else 0
-
-            #  BARRIER DAMAGE
-            extra_dmg = 0
-            remove_bar = []
-            if spell.type != "Barrier" or spell.type != "Buff":
-                if oppon.barriers:
-                    for barrier in oppon.barriers:
-                        bar_effect = (int(dice)/int(fs.spell_dice(spell.tier))) * int(spell.effect) * \
-                        (1-(0.01*((getattr(barrier, barrier_multiplier)*penetrate*pierce) - caster_multiplier))) * affinity * maximize + extra_dmg
-                        if barrier.new_hp >= -bar_effect:
-                            barrier.new_hp += bar_effect
-                            print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Dealt {round(bar_effect)} damage to Barrier {barrier.name} ({barrier.new_hp}/{barrier.hp} HP)")
-                            take_damage: bool = False
+                if spell.type != "Obstacle":
+                    while True:
+                        opponent = input("Opponent Prefix ID ([D]one): ").upper()
+                        if opponent == "D":
                             break
-                        else:
-                            extra_dmg = barrier.new_hp + bar_effect
-                            print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Barrier {barrier.name} Broke!")
-                            remove_bar.append(barrier)
-                            take_damage: bool = True
-                    if remove_bar:
-                        for barrier in remove_bar:
-                            oppon.barriers.remove(barrier)
-                        remove_bar.clear()
-                else:
-                    take_damage = True
-            else:
-                take_damage = False
-
-            #  DAMAGE APPLY
-            if take_damage:
-                if spell.type not in ["Buff", "Barrier"]:
-                    effect = self.calc_effect(dice, spell, opponent_multiplier, penetrate, pierce, caster_multiplier, affinity, maximize, save_reduction, extra_dmg)
-                    old_hp = oppon.new_hp
-                    if oppon.character_type == "Barrier" and spell.destroy:
-                        effect *= 1.5
-                    oppon.new_hp += round(effect)   #  Effect is DiceRoll/DiceTier * DefenceDiff * Affinities * Enchantments * Save Throw
-                    if oppon.new_hp <= 0 and oppon.character_type == "Barrier":
-                        del self.obstacle_prefixes[oppon.prefix]
-                        print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Obstacle {oppon.prefix} {oppon.firstname} has been destroyed.")
-                        while True:
-                            hit_player = input("Hit player(s)? Y/N: ").upper()
-                            if hit_player == "Y":
-                                if self.hit_player == -1:
-                                    self.hit_player += 2
-                                else:
-                                    self.hit_player += 1
-                                new_effect = old_hp+effect
-                                self.new_dice = self.calc_dice(new_effect, extra_dmg, int(fs.spell_dice(spell.tier)), spell, opponent_multiplier, penetrate, pierce, caster_multiplier, affinity, maximize, save_reduction)
-                                break
-                            elif hit_player == "N":
-                                self.hit_player = -1
-                                break
+                        if opponent in self.player_prefixes or opponent in self.obstacle_prefixes:
+                            if opponent in self.player_prefixes:
+                                opponent: object = self.player_prefixes[opponent]
                             else:
+                                opponent: object = self.obstacle_prefixes[opponent]
+                            opponent_list.append(opponent)
+                            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} {opponent.prefix} {opponent.firstname} added to opponent_list")
+
+            #  ATTACK AND SAVE ROLL
+            if self.hit_player < 0 and lop == 1:
+                dice = fs.is_int(input(f"Dice Roll (D{fs.spell_dice(spell.tier)}): "))
+            else:
+                dice = self.new_dice
+
+            if opponent_list and spell.type != "Obstacle":
+                while True:
+                    add_targets: list[object] = []
+                    remove_targets: list[object] = []
+                    new_targets = None
+                    for opp in opponent_list:
+                        if getattr(opp, "character_type") != "Barrier" and spell.type != "Barrier":
+                            if opp.save != 1:  # Skip opponents who's save has already been set
                                 continue
-                    elif oppon.character_type == "Barrier":
-                        print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Obstacle {oppon.prefix} {oppon.firstname} Took damage equal to {effect}, and now has {oppon.new_hp}/{oppon.max_hp} HP")
+                            save = input(f"Save throw for opponent {opp.prefix} {opp.firstname}. [S]pell: ").upper().strip()
+                            if save == "S":
+                                self.spell_action(opp)
+                                opp.save = 1
+                                new_targets, remove_target = self.save_spell(opp)
+                                add_targets.extend(new_targets)
+                                if remove_target is not None:
+                                    remove_targets.append(remove_target)
+                            else:
+                                opp.save = fs.is_int(save)
+                        else:
+                            opp.save = 1
+                    opponent_list.extend(add_targets) # Add the new targets
+                    for removal in remove_targets:
+                        opponent_list.remove(removal)
+                    if new_targets is None:
+                        break # Stop asking for saves if there are no new targets
+
+
+            #  STATUS EFFECT ROLL
+            if not spell.statuses is None:
+                for effect in spell.statuses:
+                    if effect.success != 1:
+                        status_dice = fs.is_int(input(f"Status roll for {effect.name} (D20): "))
+                        if (status_dice/20)>=(1-effect.success):
+                            effect.is_active = True
+                    else:
+                        effect.is_active = True
+
+            if spell.type == "Obstacle":
+                for obs in spell.obstacles:
+                    effect = self.calc_effect(dice, spell, 1, 0, 0, player.new_magatk, affinity, maximize, 1, 0)
+                    self.add_obstacle(obs, effect)
+
+            #  DAMAGE DEALING
+            for oppon in opponent_list:  #  Saving throw is either reduction or nullification
+                if spell.multiplier == "phyatk":
+                    caster_multiplier = player.new_phyatk
+                    opponent_multiplier = oppon.new_phydef
+                    barrier_multiplier = "phydef"
+                elif spell.multiplier == "magatk":
+                    caster_multiplier = player.new_magatk
+                    opponent_multiplier = oppon.new_magdef
+                    barrier_multiplier = "magdef"
+                elif spell.type == "Debuff":
+                    caster_multiplier = player.new_magatk
+                    opponent_multiplier = oppon.new_resistance
+                    barrier_multiplier = "magdef"
                 else:
-                    effect = (int(dice)/int(fs.spell_dice(spell.tier))) * int(spell.effect) * \
-                    (1+(0.01*caster_multiplier)) * affinity * maximize * save_reduction
-            
-                #  STATUS EFFECTS
-                if oppon.new_hp > 0 and oppon.character_type != "Barrier":
-                    print("-------------------------")
-                    self.status_effect(spell, oppon, save_reduction, effect)
-                    if spell.type not in ["Buff", "Barrier"]:
-                        print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Dealt {round(effect)} damage to Player {oppon.prefix} {oppon.firstname}")
-                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {oppon.prefix} {oppon.firstname} now has {oppon.new_hp}/{oppon.max_hp} HP")
-                    if oppon.prefix != player.prefix:
-                        sl.update_sheet(oppon)
+                    caster_multiplier = player.new_magatk
+                    opponent_multiplier = oppon.new_magdef
+                    barrier_multiplier = "magdef"
 
-                    #  BARRIER APPLY
-                    if spell.type == "Barrier":
-                        spell.barrier(effect, oppon)
-                        oppon.barriers.append(spell)
-                        print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Gave a Barrier with {round(effect)} HP to Player {oppon.prefix} {oppon.firstname}")
+                save_reduction = (((int(dice) * 3) - int(oppon.save)) / (int(dice) * 3)) if (((int(dice) * 2) - int(oppon.save))) > 0 else 0
+
+                #  CHECK FOR UNIQUE SPELL (CASTER)
+                if spell.unique:
+                    unique = spell.init(player, oppon, save_reduction, caster_multiplier, opponent_multiplier, barrier_multiplier, dice, self.player_prefixes, self, self.spell_enchantments)
+                else:
+                    unique: str = "damage"
+
+                #  CHECK FOR UNIQUE EFFECT (OPPONENT)
+                if oppon.status_effects:
+                    new_oppon = None
+                    for s_effect in oppon.status_effects:
+                        if "attacked" in s_effect.activate_unique:
+                            unique = s_effect.attacked(player, oppon, self)  # -> "damage" or "spell"
+                            if not fs.is_type(unique, str):
+                                new_oppon: object = unique
+                                unique: str = "damage"
+                    if new_oppon is not None:
+                        oppon = new_oppon
+                if unique == "damage":
+    
+                    #  BARRIER DAMAGE
+                    extra_dmg = 0
+                    remove_bar = []
+                    if spell.type not in ["Barrier", "Buff", "Debuff"]:
+                        if oppon.barriers and spell.effect <= 0:
+                            for barrier in oppon.barriers:
+                                bar_effect = (int(dice)/int(fs.spell_dice(spell.tier))) * int(spell.effect) * \
+                                (1-(0.01*((getattr(barrier, barrier_multiplier)*penetrate*pierce) - caster_multiplier))) * affinity * maximize + extra_dmg
+                                if barrier.new_hp >= -bar_effect:
+                                    barrier.new_hp += bar_effect
+                                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Dealt {round(bar_effect)} damage to Barrier {barrier.name} ({barrier.new_hp}/{barrier.hp} HP)")
+                                    take_damage: bool = False
+                                    break
+                                else:
+                                    extra_dmg = barrier.new_hp + bar_effect
+                                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Barrier {barrier.name} Broke!")
+                                    remove_bar.append(barrier)
+                                    take_damage: bool = True
+                            if remove_bar:
+                                for barrier in remove_bar:
+                                    oppon.barriers.remove(barrier)
+                                remove_bar.clear()
+                        else:
+                            take_damage = True
+                    else:
+                        take_damage = False
+
+                    #  DAMAGE APPLY
+                    if take_damage:
+                        if spell.type not in ["Buff", "Barrier"]:
+                            effect = self.calc_effect(dice, spell, opponent_multiplier, penetrate, pierce, caster_multiplier, affinity, maximize, save_reduction, extra_dmg)
+                            
+                            # Check for damage immunities
+                            immune: bool = False
+                            if oppon.status_effects:
+                                for s_effect in oppon.status_effects:
+                                    # Check for attribute
+                                    for immunity in s_effect.immunities:
+                                        if immunity == spell.attribute.lower():
+                                            immune: bool = True
+                                        if immunity == "damage":
+                                            immune: bool = True
+                            
+                            if immune:
+                                effect: int = 0
+
+                            old_hp = oppon.new_hp
+                            if oppon.character_type == "Barrier" and spell.destroy:
+                                effect *= 1.5
+
+                            if spell.name in ["Spirit Reversal"]:  # Effect is SET instead of ADDED/SUBTRACTED
+                                oppon.new_hp = round(effect)
+                            else:
+                                # oppon.new_hp += round(effect)   #  Effect is DiceRoll/DiceTier * DefenceDiff * Affinities * Enchantments * Save Throw
+                                oppon.attribute_add("hp", round(effect))
+
+                            if oppon.new_hp <= 0 and oppon.character_type == "Barrier":
+                                del self.obstacle_prefixes[oppon.prefix]
+                                print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Obstacle {oppon.prefix} {oppon.firstname} has been destroyed.")
+                                while True:
+                                    hit_player = input("Hit player(s)? Y/N: ").upper()
+                                    if hit_player == "Y":
+                                        if self.hit_player == -1:
+                                            self.hit_player += 2
+                                        else:
+                                            self.hit_player += 1
+                                        new_effect = old_hp+effect
+                                        self.new_dice = self.calc_dice(new_effect, extra_dmg, int(fs.spell_dice(spell.tier)), spell, opponent_multiplier, penetrate, pierce, caster_multiplier, affinity, maximize, save_reduction)
+                                        break
+                                    elif hit_player == "N":
+                                        self.hit_player = -1
+                                        break
+                                    else:
+                                        continue
+                            elif oppon.character_type == "Barrier":
+                                print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Obstacle {oppon.prefix} {oppon.firstname} Took damage equal to {effect}, and now has {oppon.new_hp}/{oppon.max_hp} HP")
+                            elif lop == 1:
+                                self.new_dice = dice
+                        else:
+                            effect = (int(dice)/int(fs.spell_dice(spell.tier))) * int(spell.effect) * \
+                            (1+(0.01*caster_multiplier)) * affinity * maximize * save_reduction
                     
-                    #  UPDATE SPIRITS FOR OPPONENT
-                    for o_spirits in oppon.spirits:
-                        for spirits in self.spirits:
-                            if o_spirits == spirits.id:
-                                sl.update_spirit(spirits)
+                    else:
+                        if spell.type in ["Buff"]:
+                            effect = round((int(dice)/int(fs.spell_dice(spell.tier))) * int(spell.effect) * \
+                            (1+(0.01*caster_multiplier)) * affinity * maximize * save_reduction)
+                        if spell.type in ["Debuff"]:
+                            effect = self.calc_effect(dice, spell, opponent_multiplier, penetrate, pierce, caster_multiplier, affinity, maximize, save_reduction, 0)
 
+                        # INTERUPTIONS
+                    if player.status_effects:
+                        for status in player.status_effects:
+                            if status.interupt:
+                                if "attack" not in status.interupt:
+                                    continue
+                                status.remove(player)
+                                player.status_effects.remove(status)
+                                print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {player.prefix} {player.firstname} attacked and has thus removed the status effect {status.name}")
+                    if oppon.status_effects:
+                        for status in oppon.status_effects:
+                            if status.interupt:
+                                if "attacked" not in status.interupt:
+                                    continue
+                                status.remove(oppon)
+                                oppon.status_effects.remove(status)
+                                print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {oppon.prefix} {oppon.firstname} was attacked and has thus removed the status effect {status.name}")
+
+                    #  STATUS EFFECTS
+                    if oppon.new_hp > 0 and oppon.character_type != "Barrier":
+                        print("-------------------------")
+                        self.status_effect(spell, oppon, save_reduction, effect)
+                        if spell.type not in ["Buff", "Barrier", "Debuff"]:
+                            print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Dealt {round(effect)} damage/heal to Player {oppon.prefix} {oppon.firstname}")
+                        print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {oppon.prefix} {oppon.firstname} now has {oppon.new_hp}/{oppon.max_hp} HP")
+                        if oppon.prefix != player.prefix:
+                            sl.update_sheet(oppon)
+
+                        #  BARRIER APPLY
+                        if spell.type == "Barrier":
+                            spell.barrier(effect, oppon)
+                            oppon.barriers.append(spell)
+                            print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Gave a Barrier with {round(effect)} HP to Player {oppon.prefix} {oppon.firstname}")
+                        
+                        #  UPDATE SPIRITS FOR OPPONENT
+                        for o_spirits in oppon.spirits:
+                            for spirits in self.spirits:
+                                if o_spirits == spirits.id:
+                                    sl.update_spirit(spirits)
+                    
+                    # SECOND UNIQUE CHECK
+                    if oppon.status_effects:
+                        for status in oppon.status_effects:
+                            if "attacked_after" not in status.activate_unique:
+                                continue
+                            status.attacked_after(oppon)
+                    
+            #  FLOOR APPLY
+            if spell.floor is not None:
+                for flo in spell.floor:
+                    floor: object = fe.floor_list(flo, effect, cast_spell, player.prefix)
+                    while True:
+                        prefix = input(f"Floor Effect [{floor.name}] Prefix ID: ").upper().strip()
+                        if prefix in self.player_prefixes or prefix in self.obstacle_prefixes or prefix in self.floor_prefixes:
+                            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Prefix is already registered.")
+                            continue
+                        else:
+                            floor.prefix = prefix
+                            self.floor_prefixes[prefix] = floor
+                            break
+
+            # Notes
+            if spell.effect_is != "Effect":
+                if spell.effect_is == "Range":
+                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Range of spell is {round(effect)}m")
+                if spell.effect_is == "Save":
+                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Player should have {round(effect)} to all saving throws")
+                    
         if self.hit_player > 0:
             self.hit_player -= 1
             self.spell_action(player, cast_spell)
         else:
             self.hit_player = -1
 
-            player.new_mp -= self.mp_cost
+            if self.mp_cost == 0:
+                player.new_mp -= mp_cost
+            else:
+                player.new_mp -= self.mp_cost
+            if self.sp_cost == 0:
+                player.new_sp -= sp_cost
+            else:
+                player.new_sp -= self.sp_cost
             player.new_sp -= self.sp_cost
             if spell.target == "AOE" and spell.karma != 0:
                 for opponent in opponent_list:
@@ -760,6 +936,8 @@ class Game():
             if spell.cooldown != 0:
                 player.cooldowns[cast_spell] = spell.cooldown
 
+            for opponent in opponent_list:
+                opponent.save = 1 # Reset all saves
             opponent_list.clear()
             self.spell_enchantments.clear()
             self.power_check(player)
@@ -767,7 +945,66 @@ class Game():
 
             self.death_update()
             self.mp_cost = self.sp_cost = 0
-        
+
+    def add_obstacle(self, obstacle: str = None, effect: int = None):
+        if obstacle is None:
+            while True:
+                obstacle = input("Add obstacle: ").lower()
+                if not fs.is_obstacle(obstacle):
+                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Obstacle not found...")
+                    continue
+                break
+        obstacle: object = ob.obstacle_list(obstacle)
+        if effect is None:
+            obstacle.effect = fs.is_int(input("Obstacle Effect: "))
+        else:
+            obstacle.effect = effect
+        while True:
+            prefix = input("Obstacle Prefix ID: ").upper().strip()
+            if prefix in self.player_prefixes or prefix in self.obstacle_prefixes:
+                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Prefix is already registered.")
+                continue
+            else:
+                obstacle.prefix = prefix
+                self.obstacle_prefixes[prefix] = obstacle
+                self.add_stats([obstacle])
+                obstacle.barrier()
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Obstacle {obstacle.firstname} has been created with Prefix {obstacle.prefix}")
+                break
+
+    def save_spell(self, player: object):
+        targets: list[object] = []
+        r_target: object = None
+        while True:
+            target = input("Inital spell targets: [S]ame, [D]ifferent, [N]one: ").upper().strip()
+            if target == "S":
+                targets.append(player)
+                break
+            elif target == "D":
+                while True:
+                    while True:
+                        new_target = input("Target new player prefix ID [D]one: ").upper().strip()
+                        if new_target == "D":
+                            break
+                        if not any(new_target in lst for lst in [self.player_prefixes, self.obstacle_prefixes]):
+                            continue
+                        break
+                    if new_target == "D":
+                        break
+                    result: object = self.player_prefixes.get(new_target)
+                    if result is None:
+                        result = self.obstacle_prefixes.get(new_target)
+                    if result is None:
+                        gl.print_debugg("ERROR", f"Could not find any player, floor effect or obstacle with prefix id {new_target}")
+                    else:
+                        targets.append(result)
+                break
+            elif target == "N":
+                break
+        if player not in targets:
+            r_target = player
+        return targets, r_target
+
     def death_update(self):
         for play in self.player_objects:
             if play.new_hp <= 0:
@@ -785,28 +1022,70 @@ class Game():
         #print(f"Dice: {dice}, Effect: {effect}, Tier: {tier}")
         return dice
 
-    def status_effect(self, spell, opponent, save_reduction, effect):
-        if not spell.statuses is None:
-            for status_effect in spell.statuses:
-                if not status_effect.is_active:
-                    continue
-                if save_reduction == 0:
-                    continue
-                if status_effect.ept:
-                    status_effect.effect *= round(effect)
-                if self.extend == 1.5:
-                    status_effect.time *= self.extend
-                    status_effect.time = round(status_effect.time)
-                for current_effect in opponent.status_effects:
-                    if current_effect.name == status_effect.name:
-                        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Replacing Status Effect")
-                        opponent.status_effects.remove(current_effect)
-                opponent.status_apply(status_effect, effect)
-                opponent.status_effects.append(status_effect)
-                print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {opponent.prefix} {opponent.firstname} has recieved {status_effect.name} for {status_effect.time} turns")
+    def status_effect_apply(self, status_effect: object, opponent: object, save_reduction: float, effect: int, mode = "d", spell: object = None):
+        #if not status_effect.is_active:
+        #    return
+        if save_reduction == 0:
+            return
+        if status_effect.ept and status_effect.is_effect:
+            status_effect.effect *= abs(round(effect))
+        if self.extend == 1.5:
+            status_effect.time *= self.extend
+            status_effect.time = round(status_effect.time)
+        if mode != "d":
+            if spell.type in ["Debuff"]:
+                print(f"Effect[{effect}] vs Resistance[{opponent.new_resistance}]")
+                if effect < opponent.new_resistance:
+                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {opponent.prefix} {opponent.firstname} resisted {status_effect.name}")
+                    return
+        for current_effect in opponent.status_effects:
+            if current_effect.name == status_effect.name:
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Replacing Status Effect")
+                opponent.status_effects.remove(current_effect)
+        opponent.status_apply(status_effect, effect)
+        opponent.status_effects.append(status_effect)
+        print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {opponent.prefix} {opponent.firstname} has recieved {status_effect.name} for {status_effect.time} turns")
 
+    def status_effect(self, spell: object, opponent: object, save_reduction: float, effect: int):
+        def check_immunity(opponent: object, sent_status_effect, save_reduction, effect, mode, spell):
+            immune: bool = False
+            for p_status in opponent.status_effects:
+                if p_status.immunities:
+                    for p_immunity in p_status.immunities:
+                        if gl.uncapitalize_string(sent_status_effect.name, " ") == p_immunity:  # Check from name OBS! only if the spell name = immunity
+                            immune: bool = True
+                        if p_immunity == "debuff" and sent_status_effect.effect_type == "debuff":
+                            immune: bool = True
+                        if p_immunity == "slow" and sent_status_effect.new_agility < 0 or sent_status_effect.new_acrobatics < 0:
+                            immune: bool = True
+            if immune:
+                return
+            self.status_effect_apply(sent_status_effect, opponent, save_reduction, effect, mode, spell)
+        
+        if hasattr(spell, "immunities"):
+            check_immunity(opponent, spell, 1, effect, "d", None)
+        else:
+            if spell.statuses is None:
+                return
+            for status_effect in spell.statuses:
+                check_immunity(opponent, status_effect, save_reduction, effect, "stat", spell)
+                
+                # Check for debuffs if spell gives immunity
+                if status_effect.immunities:
+                    remove: list[object] = []
+                    for immunity in status_effect.immunities:
+                        for p_effect in opponent.status_effects:
+                            if p_effect.effect_type != "debuff":
+                                continue
+                            if gl.uncapitalize_string(p_effect.name, " ") != immunity:
+                                continue
+                            remove.append(p_effect)
+                            p_effect.remove(opponent)
+                    if remove:
+                        for effect in remove:
+                            opponent.status_effects.remove(effect)
     def god_action(self):
-        choice = input("[D]amage/Heal, [P]layer, [B]ackpack, [E]ffect, [A]bilities, [I]nfo, [O]bstacle, [M]usic, [S]ave, [Q]uit, [C]ontinue\n").upper().strip()
+        choice = input("[D]amage/Heal, [P]layer, [B]ackpack, [E]ffect, [A]bilities, [I]nfo, [O]bstacle, [F]loor, [M]usic, [S]ave, [Q]uit, [C]ontinue\n").upper().strip()
         if choice == "D":
             while True:
                 character = input("Character Prefix ID: ").upper()
@@ -838,33 +1117,16 @@ class Game():
             while True:
                 choice = input("[A]dd, [R]emove, [L]ist, [B]ack: ").upper()
                 if choice == "A":
-                    obstacle = input("Add obstacle: ").lower()
-                    if not fs.is_obstacle(obstacle):
-                        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Obstacle not found...")
-                        continue
-                    obstacle: object = ob.obstacle_list(obstacle)
-                    obstacle.effect = fs.is_int(input("Obstacle Effect: "))
-                    while True:
-                        prefix = input("Obstacle Prefix ID: ").upper().strip()
-                        if prefix in self.player_prefixes or prefix in self.obstacle_prefixes:
-                            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Prefix is already registered.")
-                            continue
-                        else:
-                            obstacle.prefix = prefix
-                            self.obstacle_prefixes[prefix] = obstacle
-                            self.add_stats([obstacle])
-                            obstacle.barrier()
-                            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Obstacle {obstacle.firstname} has been created with Prefix {obstacle.prefix}")
-                            break
+                    self.add_obstacle()
                     break
                 elif choice == "R":
                     if not self.obstacle_prefixes:
                         print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Obstacle not found...")
                         return
-                    for index, obstacle in enumerate(self.obstacle_prefixes):
+                    for index, (key, obstacle) in enumerate(self.obstacle_prefixes.items()):
                         print(f"[{obstacle.prefix}] {obstacle.name} {obstacle.hp}/{obstacle.max_hp} HP")
                     while True:
-                        choice = fs.is_int(input("Remove obstacle with index: "))
+                        choice = input("Remove obstacle with prefix index: ").upper().strip()
                         if choice not in self.obstacle_prefixes:
                             continue
                         del self.obstacle_prefixes[choice]
@@ -896,7 +1158,7 @@ class Game():
         elif choice =="E":
             character = input("Character Prefix ID: ").upper()
             if character in self.player_prefixes:
-                character = self.player_prefixes[character]
+                character: object = self.player_prefixes[character]
                 for player in self.player_objects:
                     if player.prefix == character.prefix:
                         choice = input("[A]dd, [E]dit, [R]emove: ").upper()
@@ -922,38 +1184,22 @@ class Game():
                                 print(f"[{index+1}] {effect.name} [Time left: {effect.time_left}]")
                             remove = fs.is_int(input("Remove effect with index: "))
                             if 1 <= remove <= len(player.status_effects):
-                                status_effect = player.status_effect[remove-1]
+                                status_effect = player.status_effects[remove-1]
                                 status_effect.remove(player)
                                 del player.status_effects[remove-1]
                         elif choice == "A":
-                            effect = input("Apply effect: ").lower()
+                            effect: str = input("Apply status effect: ").lower()
                             time = input("Time: ")
                             extend = input("Is Extended? [Y/N]: ").upper()
                             extend = 1.5 if extend == "Y" else 1
                             use_effect = input("Use Effect [Y/N]: ").upper()
-                            if use_effect == "Y":
-                                use_effect = True
-                            else:
-                                use_effect = False
-                            status_effect = ef.effect_list(effect, int(time), 1, use_effect)
-                            if status_effect.ept:
-                                damage_effect = fs.is_int(input("Damage/Heal Effect: "))
-                                status_effect.effect *= int(damage_effect)
-                            else:
-                                damage_effect = 1
-                            if extend == 1.5:
-                                status_effect.time *= extend
-                            if status_effect.is_effect:
-                                effect_multiplier = fs.is_int(input("Damage/Heal Effect Multiplier: "))
-                            else:
-                                effect_multiplier = 1
-                            for current_effect in player.status_effects:
-                                if current_effect.name == status_effect.name:
-                                    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Replacing Status Effect")
-                                    player.status_effects.remove(current_effect)
-                            player.status_effects.append(status_effect)
-                            player.status_apply(status_effect, effect_multiplier)
-                            print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {player.id} {player.firstname} has recieved {status_effect.name} for {status_effect.time} turns")
+                            use_effect = True if use_effect == "Y" else False
+                            spell_effect = 0
+                            if use_effect:
+                                spell_effect = fs.is_int(input("Spell Effect: "))
+                            status_effect = ef.effect_list(effect, time, 1, use_effect)
+                            self.status_effect(status_effect, player, 1, spell_effect)
+                            
                             sl.update_sheet(player)
         elif choice == "A":
             character = input("Character Prefix ID: ").upper()
@@ -1016,13 +1262,15 @@ class Game():
                     if player.prefix == character.prefix:
                         print(f"---------={player.firstname} {player.surname}=---------")
                         print(f"Board Piece: {player.prefix}")
+                        print(f"Team: {player.team}")
                         print(f"Power level: {player.new_power_level}/{player.power_level}")
                         print(f"Karma: {player.new_karma}/{player.karma}")
                         print(f"Religion: {player.religion}")
                         print(f"Armor Class: {player.armor_class}")
+                        print(f"Race Type: {player.race_type}")
                         spirits = []
                         for spirit in player.spirits:
-                            spirits.append(spirit.firstname)
+                            spirits.append([spirit.firstname, spirit.vassel])
                         print(f"Spirits: {spirits}")
                         print(f"Summons: {summons}")
                         print("---------=Effects=---------")
@@ -1065,6 +1313,79 @@ class Game():
             sd.sound_stop()
             sd.sound_play("menu_theme", 0.2, -1)
             menu.main_menu()
+        
+        elif choice == "F":
+            print("---------=Floor Menu=---------")
+            while True:
+                choice = input("[A]dd, [R]emove, [T]rigger, [L]ist, [B]ack: ").upper()
+                if choice == "A":
+                    floor = input("Add floor effect: ").lower()
+                    if not fs.is_floor(floor):
+                        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Floor effect not found...")
+                        continue
+                    floor: object = fe.floor_list(floor)
+                    floor.effect = fs.is_int(input("Floor Effect: "))
+                    caster = input("Floor Caster: ").upper()
+                    floor.caster = caster if caster is not "" else "Ulkaraz"
+                    spell = input("Floor Spell: ").lower()
+                    floor.spell = spell if spell is not "" else "God Action"
+                    floor.time = fs.is_int(input("Floor Time: "))
+                    while True:
+                        prefix = input("Floor Effect Prefix ID: ").upper().strip()
+                        if prefix in self.player_prefixes or prefix in self.obstacle_prefixes or prefix in self.floor_prefixes:
+                            print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Prefix is already registered.")
+                            continue
+                        else:
+                            floor.prefix = prefix
+                            self.floor_prefixes[prefix] = floor
+                            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Floor effect {floor.name} has been created with Prefix {floor.prefix}")
+                            break
+                    break
+                elif choice == "R":
+                    if not self.floor_prefixes:
+                        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Floor effect not found...")
+                        return
+                    for index, (key, floor) in enumerate(self.floor_prefixes.items()):
+                        print(f"[{floor.prefix}] {floor.name} casted by {floor.caster}'s {floor.spell}")
+                    while True:
+                        choice = input("Remove floor effect with prefix index: ").upper().strip()
+                        if choice not in self.floor_prefixes:
+                            continue
+                        del self.floor_prefixes[choice]
+                        break
+                    break
+                elif choice == "L":
+                    print("---------=Floor Effects=---------")
+                    for index, (key, floor) in enumerate(self.floor_prefixes.items()):
+                        print(f"[{key}] {floor.name}, casted by: {floor.caster}, spell: {floor.spell}")
+                elif choice == "T":
+                    if not self.floor_prefixes:
+                        print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Floor effects not found...")
+                        continue
+                    for index, (key, floor) in enumerate(self.floor_prefixes.items()):
+                        print(f"[{index+1}] {key} {floor.name}, casted by: {floor.caster}, spell: {floor.spell}")
+                    while True:
+                        trigger = input("Trigger floor effect with prefix ID: ").upper().strip()
+                        if trigger in self.floor_prefixes:
+                            floor: object = self.floor_prefixes.get(trigger)
+                            break
+                    players = []
+                    while True:
+                        append = input("Append to player prefix ([D]one): ").upper().strip()
+                        if append == "D":
+                            break
+                        if append in self.player_prefixes and append not in players:
+                            players.append(append)
+                    
+                    if players:
+                        for effect in floor.status_effects:
+                            for p in players:
+                                player: object = self.player_prefixes.get(p)
+                                player.status_effects.append(effect)
+                            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Added status effect to {player.prefix}")
+                        
+                elif choice == "B":
+                    break
         elif choice == "C":
             return
     
@@ -1075,6 +1396,8 @@ class Game():
             choice = input("[R]andom or [S]elect: ").upper()
             if choice == "R":
                 for player in (p for p in self.player_objects if p.character_type != "spirit"):
+                    if player in self.initiative_list:
+                        continue
                     player.initiative = random.randint(1, 20)
                     self.initiative_list.append(player)
                 break
@@ -1088,13 +1411,14 @@ class Game():
         self.initiative_list.sort(key=lambda x: x.initiative, reverse=True)
 
 class Scenario():
-    def __init__(self, name: str, turn: int = 1, players: list[object] = None, playerturn: int = 0, mode = "Adventure", obstacles: dict = None):
+    def __init__(self, name: str, turn: int = 1, players: list[object] = None, playerturn: int = 0, mode = "Adventure", obstacles: dict = None, floor: dict = None):
         self.name = name
         self.turn = turn
         self.playerturn = playerturn
         self.mode = mode
         self.players = players if players is not None else []
         self.obstacles = obstacles if obstacles is not None else {}
+        self.floor = floor if floor is not None else {}
 
     def update_players(self, players):
         self.players.clear()

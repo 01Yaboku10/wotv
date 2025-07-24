@@ -1,10 +1,2 @@
-obsticals systems, including things like walls and barriers
-add spell caster defence on save roll for like walls and shit
-add damage dealing ground effects like acid and fire, make it so that players stepping into it gains the status effect by making it an effect list.
-For example, "status effects" -> "add" -> "Ground effect" -> LIST OF "index. Effect" FOR ONE TURN
-
-Check over system that lets you cast a spell instead of saving throw.
-
-Add a "destruction" var to spells that give applified damage to obstacles
-
-Check over Twin and Triplet enchantments
+Fix the immunities. Perhaps have a "unique" check that checks magic attribute when attacked?
+Make the game also remove debuffs when a person casts immunity. E.g (person is on fire -> person casts fire immunity -> fire dissapears)

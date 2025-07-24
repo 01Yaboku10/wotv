@@ -13,6 +13,7 @@ import copy
 import effects as ef
 import ast
 import spell as sp
+import flooreffect as fe
 
 init(autoreset=True)
 
@@ -25,16 +26,23 @@ def create_savefolder(directory):
         else:
             print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} New directory {directory} could not be created.")
 
-def save_check(file_path) -> bool:
+def save_check(file_path, mode = "c") -> bool:
     with open(file_path, "r", encoding="utf-8") as file:
         lines = file.readlines()
     with open(file_path, "r", encoding="utf-8") as file:
         for index, line in enumerate(lines):
-            if not line.startswith("//"):
-                print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} An error occured within the save file at line {index+1}")
-                return False
+            if mode == "c":
+                if not line.startswith("//"):
+                    print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} An error occured within the save file at line {index+1}")
+                    return False
+            else:
+                if not line.startswith("Init") and index == 0:
+                    gl.print_debugg("ERROR", f"An error occured within the save file at line {index+1}")
+                    return False
+                elif not line.startswith("Player") and index != 0:
+                    gl.print_debugg("ERROR", f"An error occured within the save file at line {index+1}")
+                    return False
     return True
-
 
 def save_all(directory: str, players: list[object]):
     file_path = os.path.join(directory, "characters_temp.txt")
@@ -244,7 +252,7 @@ def load_characters(directory: str):
                 'equip_slot': [],
                 'power_level': 0,
                 'residence': None,
-                'race_type': None,
+                'race_type': [],
                 'occupation': None,
                 'karma': 0,
                 'religion': None,
@@ -307,7 +315,7 @@ def load_characters(directory: str):
                         # Assign the value, converting to appropriate types
                         if key in ["Races", "Jobs", "Inventory"]:
                             character_data[var_name] = eval(value)  # List of tuples
-                        elif key in ["Attribute", "Nicknames", "Spirits", "BalanceBreaker", "VasselSlot"]:
+                        elif key in ["Attribute", "Nicknames", "Spirits", "BalanceBreaker", "VasselSlot", "RaceType"]:
                             try:
                                 # Try to evaluate value as a list
                                 evaluated_value = eval(value)
@@ -395,11 +403,13 @@ def load_characters(directory: str):
                 persuasion=character_data['persuasion'],
                 performance=character_data['performance']
             )
+    ch.list_combine(ch.character_list())
 
 def update_sheet(player: object):
     print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Updating sheet for {player.firstname}...")
 
     sheet = f"wotv player {player.id}"
+    rts = []
     blb = []
     rcn = []
     rcl = []
@@ -429,6 +439,9 @@ def update_sheet(player: object):
             name = job.name
             jcn.append(name)
             jcl.append(level)
+    if player.race_type:
+        for i in player.race_type:
+            rts.append(i)
     if player.inventory:
         for i in player.inventory:
             name, amount = i
@@ -480,7 +493,14 @@ def update_sheet(player: object):
         for index, a in enumerate(player.abilities):
             status_effects[last_index+index+1] = [a.name, a.hp, a.mp, a.mp, a.phyatk, a.phydef, a.agility, a.finess, a.magatk, a.magdef, a.resistance, a.special, a.athletics, a.acrobatics, a.stealth, a.sleight, a.investigation, a.insight, a.perception, a.deception, a.intimidation, a.persuasion, a.performance, a.time]
 
-    data = gs.create_matrix(blb, rcn, rcl, jcn, jcl, invn, inva, att, nick, gold)
+    # Cooldowns
+    cooldowns = [["", 0] for i in range(10)]
+    if player.cooldowns:
+        for index, (key, time) in enumerate(player.cooldowns.items()):
+            spell_name = sp.spell_list(key).name
+            cooldowns[index] = [spell_name, time]
+    
+    data = gs.create_matrix(rts, blb, rcn, rcl, jcn, jcl, invn, inva, att, nick, gold)
 
     update_data = [
         {"range": "A2:V5", "values": [
@@ -488,12 +508,13 @@ def update_sheet(player: object):
             [player.new_hp, player.new_mp, player.new_sp, player.new_phyatk, player.new_phydef, player.new_agility, player.new_finess, player.new_magatk, player.new_magdef, player.new_resistance, player.new_special, player.new_athletics, player.new_acrobatics, player.new_stealth, player.new_sleight, player.new_investigation, player.new_insight, player.new_perception, player.new_deception, player.new_intimidation, player.new_persuasion, player.new_performance],
             [player.max_hp, player.max_mp, player.max_sp, player.max_phyatk, player.max_phydef, player.max_agility, player.max_finess, player.max_magatk, player.max_magdef, player.max_resistance, player.max_special, player.max_athletics, player.max_acrobatics, player.max_stealth, player.max_sleight, player.max_investigation, player.max_insight, player.max_perception, player.max_deception, player.max_intimidation, player.max_persuasion, player.max_performance]
         ]},
-        {"range": "A6:L6", "values": [
-            [player.id, player.firstname, player.surname, player.karma, player.religion, player.weight, player.max_weight, player.power_level, player.armor_class, player.race_type, player.occupation, player.residence]
+        {"range": "A6:K6", "values": [
+            [player.id, player.firstname, player.surname, player.karma, player.religion, player.weight, player.max_weight, player.power_level, player.armor_class, player.occupation, player.residence]
         ]},
-        {"range": "M6:Y39", "values": data},
+        {"range": "L6:Y39", "values": data},
         {"range": "B41:X52", "values": equip_data},
-        {"range": "B54:Y70", "values": status_effects}
+        {"range": "B54:Y70", "values": status_effects},
+        {"range": "B72:C81", "values": cooldowns}
     ]
 
     # Prepare the batch update request for multiple ranges
@@ -507,7 +528,6 @@ def update_sheet(player: object):
 
     # Perform batch update
     gs.google_batch_update(sheet, update_requests)
-
 
 def load_spirits(players: list[object], load: bool = False) -> list[object]:
     summons = []
@@ -539,7 +559,6 @@ def update_spirit(spirit: object, mode="start") -> None:
         spirit_reset(spirit, player)
     spirit_check(spirit, player)
 
-
 def spirit_reset(spirit: object, player: object):
     attributes: list = gl.STATS + gl.SKILLS
     old_multiplier = 1
@@ -558,7 +577,6 @@ def spirit_reset(spirit: object, player: object):
             setattr(spirit, f"new_{attribute}", round(spirit_attrib/new_multiplier))
             setattr(spirit, f"max_{attribute}", round(max_spirit_attrib/new_multiplier))
     
-
 def spirit_check(spirit: object, player: object):
     attributes: list = gl.STATS + gl.SKILLS
     old_multiplier = 1
@@ -612,6 +630,8 @@ def load_scenario(scenario_name: str):
     player_prefixes = {}
     player_effects = []
 
+    create_savefolder("scenario_saves")
+
     file_path = os.path.join("scenario_saves", scenario_name)
     if not os.path.exists(file_path):
         with open(file_path, "w", encoding="utf-8") as file:
@@ -622,7 +642,8 @@ def load_scenario(scenario_name: str):
         "Mode": "mode",
         "Turn": "turn",
         "Player Turn": "playerturn",
-        "Obstacles": "obstacles"
+        "Obstacles": "obstacles",
+        "Floor": "floor"
     }
 
     scenario_data = {
@@ -631,7 +652,8 @@ def load_scenario(scenario_name: str):
         'players': [],
         'playerturn': 0,
         'mode': None,
-        'obstacles': {}
+        'obstacles': {},
+        'floor': {}
     }
 
     attribute_map = {
@@ -684,6 +706,7 @@ def load_scenario(scenario_name: str):
         "Cooldowns": "cooldowns",
         "Barriers": "barriers",
         "Vassel": "vassel",
+        "Summons": "summons"
     }
 
     with open(file_path, "r", encoding="utf-8") as file:
@@ -705,8 +728,11 @@ def load_scenario(scenario_name: str):
                     var_name = scenario_map[key]
 
                     if key in ["Obstacles"]:
-                        obstacles_dict = {}
+                        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Checking for Obstacles...")
+                        obstacles_dict: dict = {}
                         obstacles: list[list[str, str, int]] = ast.literal_eval(value)  # Prefix, Name, HP
+                        if not obstacles:
+                            continue
                         for obs in obstacles:
                             prefix, name, hp = obs
                             obstacle: object = ob.obstacle_list(name)
@@ -719,6 +745,19 @@ def load_scenario(scenario_name: str):
                             obstacle.barriers = []
                             obstacles_dict[prefix] = obstacle
                         scenario_data[var_name] = obstacles_dict
+                    elif key in ["Floor"]:
+                        gl.print_debugg("DEBUGG", "Checking for Floor Effects...")
+                        floors_dict: dict = {}
+                        floors: list[list[str, str, int, str, str, int]] = ast.literal_eval(value)  # Prefix, name, effect, spell_name, caster_name, time
+                        if not floors:
+                            continue
+                        for flo in floors:
+                            prefix, name, effect, spell, caster, time = flo
+                            floor: object = fe.floor_list(name, effect, spell, caster, time)
+                            floor.prefix = prefix
+                            floors_dict[prefix] = floor
+                            gl.print_debugg("DEBUGG", f"Creating Floor Effect {floor.name}...")
+                        scenario_data[var_name] = floors_dict
                     elif value.isdigit():
                         scenario_data[var_name] = int(value)  # For integers
                     else:
@@ -775,7 +814,8 @@ def load_scenario(scenario_name: str):
                     'initiative': 0,
                     'team': None,
                     'prefix': "foo",
-                    'vassel': False
+                    'vassel': False,
+                    'summons': []
                 }
 
                 info = line.split("/&/")
@@ -829,6 +869,17 @@ def load_scenario(scenario_name: str):
                             upload_barrier.new_hp = s_hp
 
                             player_effects.append(upload_barrier)
+                    elif key in ["Summons"]:
+                        gl.print_debugg("DEBUGG", "Checking for summons...")
+                        p_summons = []
+                        summons: list[tuple[str, str, int]] = ast.literal_eval(value)  # ID, Prefix, Time
+                        for s in summons:
+                            s_id, s_prefix, time = s
+                            summon: object = ch.character_dic.get(str(s_id))
+                            if summon is not None:
+                                summon.prefix = s_prefix
+                                p_summons.append((summon, time))
+                        character_data[var_name] = p_summons
                     elif value.isdigit():
                         character_data[var_name] = int(value)  # For integers
                     else:
@@ -861,37 +912,38 @@ def load_scenario(scenario_name: str):
                 player_objects.append(assigned_player)
                 player_prefixes[character_data["prefix"]] = assigned_player
                 player_effects.clear()
-        scenario = (scenario_data["name"], scenario_data["turn"], player_objects, scenario_data["playerturn"], scenario_data["mode"], scenario_data["obstacles"])
+        scenario = (scenario_data["name"], scenario_data["turn"], player_objects, scenario_data["playerturn"], scenario_data["mode"], scenario_data["obstacles"], scenario_data["floor"])
     
     return assigned_players, player_objects, player_prefixes, scenario
 
 def save_scenario(scenario: object) -> None:
     create_savefolder("scenario_saves")
     s: object = scenario
-    save_file: str = f"scenario_{s.name}.txt"
-    file_path = os.path.join("scenario_saves", save_file)
-
-    # CHECK IF FILE EXISTS
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    save_file_true: str = os.path.join("scenario_saves", f"scenario_{s.name}.txt")
+    file_path = os.path.join("scenario_saves", "scenario_temp.txt")
     
     with open(file_path, "w", encoding="utf-8") as save:
         # INIT
         obstacles = []
+        floor = []
         for key, obs in s.obstacles.items():
             obstacles.append([key, gl.uncapitalize_string(obs.firstname, " "), obs.new_hp])
+        for key, flo in s.floor.items():
+            floor.append([key, gl.uncapitalize_string(flo.name, " "), flo.effect, flo.spell, flo.caster, flo.time])
 
         save.write(f"Init/&/"
                    f"Name:{s.name}"
                    f"//Mode:{s.mode}"
                    f"//Turn:{s.turn}"
                    f"//Player Turn:{s.playerturn}"
-                   f"//Obstacles:{obstacles}\n")
+                   f"//Obstacles:{obstacles}"
+                   f"//Floor:{floor}\n")
         
         # PLAYERS
         for p in s.players:
             effects: list[object] = [eff for eff in p.status_effects]
             barriers: list[str] = [bari.barrier_repr for bari in p.barriers]
+            summons: list[tuple[str, str, int]] = [(summon.id, summon.prefix, time) for summon, time in p.summons]
             save.write(f"Player/&/"
                        f"ID:{p.id}"
                        f"//Initiative:{p.initiative}"
@@ -946,6 +998,20 @@ def save_scenario(scenario: object) -> None:
                        f"//Prefix:{p.prefix}"
                        f"//Cooldowns:{p.cooldowns}"
                        f"//Barriers:{barriers}"
-                       f"//Vassel:{p.vassel}\n")
+                       f"//Vassel:{p.vassel}"
+                       f"//Summons:{summons}\n")
             print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character {p.prefix} {p.firstname} saved in scenario.")
-    print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Scenario {s.name} saved successfuly.")
+
+    with open(file_path, "r", encoding="utf-8") as file:
+        lines = file.readlines()
+    if not save_check(file_path, "s"):
+        return
+    
+    os.remove(save_file_true)  # Remove old save file
+
+    with open(save_file_true, "w", encoding="utf-8") as save:
+        for line in lines:
+            save.write(line)
+    if save_check(save_file_true, "s"):
+        os.remove(file_path)  # Remove temp file
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Scenario {s.name} saved successfuly.")

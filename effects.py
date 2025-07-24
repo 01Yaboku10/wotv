@@ -39,7 +39,13 @@ class Effect():
                  persuasion: int = 0,
                  performance: int = 0,
                  karma: int = 0,
-                 religion: str = None):
+                 religion: str = None,
+                 interupt: list[str] = None,  # ["attacked", "attack"]
+                 save: int = 0,  # Additional point for saving throw
+                 activate_unique: list[str] = None,  # ["attacked", "attack", "attacked_after"]
+                 c_effect_m: int = 0,
+                 immunities: list[str] = None,
+                 effect_type: str = "spell"):
         self.name = name
         self.time = time
         self.time_left = time_left
@@ -99,6 +105,15 @@ class Effect():
         self.new_karma = karma
         self.karma = karma
         self.use_religion = religion
+        self.interupt = interupt if interupt is not None else []
+        self.save = save
+        self.activate_unique = activate_unique if activate_unique is not None else []
+        self.c_effect_m = c_effect_m
+        self.immunities = immunities
+        self.effect_type = effect_type
+
+        if self.spell_effect != 0 and self.ept and self.is_effect:
+            self.effect = self.effect * abs(self.spell_effect)
     
     def __repr__(self):
         name = gl.uncapitalize_string(self.name, " ")
@@ -190,6 +205,8 @@ class Effect():
         if self.use_religion is not None:
             if self.use_religion != p.religion:
                 self.bonus = -self.bonus
+        if self.c_effect_m != 0:
+            self.bonus *= self.c_effect_m
         self.new_hp = round(self.hp*(p.max_hp if self.affect_max else self.bonus))
         self.new_mp = round(self.mp*(p.max_sp if self.affect_max else self.bonus))
         self.new_sp = round(self.sp*(p.max_mp if self.affect_max else self.bonus))
@@ -213,6 +230,7 @@ class Effect():
         self.new_persuasion = round(self.persuasion*(p.max_persuasion if self.affect_max else self.bonus))
         self.new_performance = round(self.performance*(p.max_performance if self.affect_max else self.bonus))
         self.new_karma = round(self.karma*(p.max_karma if self.affect_max else self.bonus))
+        self.save = round(self.save*self.bonus)
 
     def update_effect(self, effect: int) -> None:
         if self.ept:
@@ -220,16 +238,97 @@ class Effect():
         else:
             self.effect = effect
 
-def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False, use_religion: str = None, affect_max: bool = False):
+class Effect_VulpineMirror(Effect):
+    def init(self):  # Opponent = player who has the effect
+        self.vulpine_mirror_multiplier = self.spell_effect*0.01
+        self.vulpine_mirror_stack = 3
+        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} vulpine_mirror_multiplier = {self.vulpine_mirror_multiplier}")
+
+    def attacked(self, player: object, opponent: object, game: object) -> str:  # Opponent = player who has the effect
+        roll = fs.is_int(input("Save throw for Vulpine Mirror (D20): "))
+        success: bool = 1-roll/20 <= self.vulpine_mirror_multiplier
+        if success:
+            print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} The Vulpine Fox absorbed the damage!")
+            self.vulpine_mirror_stack -= 1
+            if self.vulpine_mirror_stack <= 0:
+                self.remove(opponent)
+                opponent.status_effects.remove(self)
+            else:
+                print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} There are {self.vulpine_mirror_stack} Vulpine Mirror Foxes left.")
+            return "spell"
+        else:
+            return "damage"
+
+class Effect_LightEternal(Effect):
+    def attacked_after(self, player: object):
+        if player.new_hp <= 0:
+            setattr(player, "new_hp", 1)
+            print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {player.prefix} {player.firstname} Resisted death with Light Eternal and now has {player.new_hp} HP")
+
+class Effect_SoulLink(Effect):
+    def attacked(self, player: object, opponent: object, game: object):
+        gl.print_debugg("NOTE", f"{opponent.prefix} {opponent.firstname} has Soul Link!")
+        print("--------=Soul Link=--------")
+        while True:
+            redirect: str = input("Redirect damage/heal [Y/N]: ").upper()
+            if redirect not in ["Y", "N"]:
+                continue
+            if redirect == "N":
+                return "damage"
+            break
+        while True:
+            redirect: str = input("Redirect damage/heal to player with Prefix ID: ").upper().strip()
+            if redirect not in game.player_prefixes:
+                gl.print_debugg("ERROR", f"Player {redirect} not found...")
+                continue
+            break
+        redirect: object = game.player_prefixes.get(redirect)
+        if redirect is not None:
+            return redirect
+        else:
+            return "damage"
+
+def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False, use_religion: str = None, affect_max: bool = False, spell_effect: int = 0, ceff: int = 0):
     effects_list = {
         # Spell Effects
-        "ignite": Effect("Ignite", time=tim, time_left=tim, ept=True, effect=-0.2, success=succ),
-        "corrosion": Effect("Corrosion", time=tim, time_left=tim, phydef=-1, is_effect=True, success=succ),
-        "shock": Effect("Shock", time=tim, time_left=tim, perception=-0.3, agility=-0.5, is_effect=use_effect, success=succ, affect_max=affect_max),
-        "stun": Effect("Stun", time=tim, time_left=tim, acrobatics=-100, agility=-100, success=succ),
-        "increase_all_stats": Effect("Increase All Stats", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, effect=1, hp=1, sp=1, mp=1, phyatk=1, phydef=1, agility=1, finess=1, magatk=1, magdef=1, resistance=1, special=1),
-        "increase_all_skills": Effect("Increase All Skills", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, effect=1, athletics=1, acrobatics=1, stealth=1, sleight=1, investigation=1, insight=1, perception=1, deception=1, intimidation=1, persuasion=1, performance=1),
+        "ignite": Effect("Ignite", time=tim, time_left=tim, ept=True, effect=-0.2, success=succ, is_effect=use_effect, spell_effect=spell_effect, effect_type="debuff"),
+        "corrosion": Effect("Corrosion", time=tim, time_left=tim, phydef=-1, is_effect=True, success=succ, effect_type="debuff"),
+        "shock": Effect("Shock", time=tim, time_left=tim, perception=-0.3, agility=-0.5, is_effect=use_effect, success=succ, affect_max=affect_max, effect_type="debuff"),
+        "stun": Effect("Stun", time=tim, time_left=tim, acrobatics=-100, agility=-100, success=succ, effect_type="debuff"),
+        "increase_all_stats": Effect("Increase All Stats", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, c_effect_m=ceff, effect=1, hp=1, sp=1, mp=1, phyatk=1, phydef=1, agility=1, finess=1, magatk=1, magdef=1, resistance=1, special=1),
+        "increase_all_skills": Effect("Increase All Skills", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, c_effect_m=ceff, effect=1, athletics=1, acrobatics=1, stealth=1, sleight=1, investigation=1, insight=1, perception=1, deception=1, intimidation=1, persuasion=1, performance=1),
         "glimmering_shield": Effect("Glimmering Shield", time=tim, time_left=tim, success=succ),
+        "foxfire_touch": Effect("Foxfire Touch", time=tim, time_left=tim, success=succ),
+        "illuminated_path": Effect("Illuminated Path", time=tim, time_left=tim, success=succ, acrobatics=2),
+        "spiritveil": Effect("Spiritveil", time=tim, time_left=tim, success=succ, is_effect=True, stealth=1, interupt=["attack","attacked"]),
+        "blinded": Effect("Blinded", time=tim, time_left=tim, success=succ, effect_type="debuff"),
+        "foxfire_pack": Effect("Foxfire Pack", time=tim, time_left=tim, success=succ, is_effect=True, save=1),
+        "spirit_reversal": Effect("Spirit Reversal", time=tim, time_left=tim, success=succ),
+        "cleansing_light": Effect("Cleansing Light", time=tim, time_left=tim, success=succ),
+        "vulpine_mirror": Effect_VulpineMirror("Vulpine Mirror", time=tim, time_left=tim, success=succ, is_effect=True, activate_unique=["attacked"]),
+        "halo_of_the_tamer": Effect("Halo of The Tamer", time=tim, time_left=tim, success=succ),
+        "sanctified_ground": Effect("Sanctified Ground", time=tim, time_left=tim, success=succ, ept=True, effect=1, is_effect=True),
+        "sanctified_ground_floor": Effect("Sanctified Ground Floor", time=tim, time_left=tim, success=succ, ept=True, effect=spell_effect, is_effect=True),
+        "astral_tailwind": Effect("Astral Tailwind", time=tim, time_left=tim, success=succ),
+        "soul_link": Effect_SoulLink("Soul Link", time=tim, time_left=tim, success=succ, activate_unique=["attacked"]),
+        "suppressed": Effect("Suppresed", time=tim, time_left=tim, success=succ, effect_type="debuff"),
+        "silenced": Effect("Suppresed", time=tim, time_left=tim, success=succ, effect_type="debuff"),
+        "solar_cage": Effect("Solar Cage", time=tim, time_left=tim, success=succ, ept=True, effect=-10, effect_type="debuff"),
+        "encumbered": Effect("Encumbered", time=tim, time_left=tim, success=succ, effect_type="debuff"),
+        "luminous_rebirth": Effect("Luminous Rebirth", time=tim, time_left=tim, success=succ),
+        "fox_of_the_zenith": Effect("Fox of The Zenith", time=tim, time_left=tim, success=succ),
+        "purify": Effect("Purify", time=tim, time_left=tim, success=succ),
+        "light_eternal": Effect_LightEternal("Light Eternal", time=tim, time_left=tim, success=succ, activate_unique=["attacked_after"]),
+        "spirit_ascendant": Effect("Spirit Ascendant", time=tim, time_left=tim, success=succ),
+        "flight": Effect("Flight", time=tim, time_left=tim, success=succ),
+        
+        # Immunites
+        "charm_immunity": Effect("Charm Immunity", time=tim, time_left=tim, success=succ, immunities=["charm"]),
+        "slow_immunity": Effect("Slow Immunity", time=tim, time_left=tim, success=succ, immunities=["slow"]),
+        "debuff_immunity": Effect("Debuff Immunity", time=tim, time_left=tim, success=succ, immunities=["debuff"]),
+        "light_magic_immunity": Effect("Light Magic Immunity", time=tim, time_left=tim, success=succ, immunities=["light"]),
+        "insanity_immunity": Effect("Insanity Immunity", time=tim, time_left=tim, success=succ, immunities=["insanity"]),
+        "fire_immunity": Effect("Fire Immunity", time=tim, time_left=tim, success=succ, immunities=["ignite", "fire"]),
 
         # Items
         "anti-resistance": Effect("Anti-Resistance", time=tim, time_left=tim, success=succ, resistance=-10),
