@@ -45,7 +45,9 @@ class Effect():
                  activate_unique: list[str] = None,  # ["attacked", "attack", "attacked_after"]
                  c_effect_m: int = 0,
                  immunities: list[str] = None,
-                 effect_type: str = "spell"):
+                 effect_type: str = "spell",
+                 heal_tag: list[str] = None
+                 ):
         self.name = name
         self.time = time
         self.time_left = time_left
@@ -111,6 +113,8 @@ class Effect():
         self.c_effect_m = c_effect_m
         self.immunities = immunities
         self.effect_type = effect_type
+        self.heal_tag = heal_tag if heal_tag is not None else []
+        self.applied = False
 
         if self.spell_effect != 0 and self.ept and self.is_effect:
             self.effect = self.effect * abs(self.spell_effect)
@@ -202,35 +206,24 @@ class Effect():
         
     def apply_bonus(self, p: object) -> None:
         self.bonus = abs(self.spell_effect if self.is_effect else 1)
-        if self.use_religion is not None:
-            if self.use_religion != p.religion:
-                self.bonus = -self.bonus
+        if self.use_religion is not None and self.use_religion != p.religion:
+            self.bonus = -self.bonus
         if self.c_effect_m != 0:
             self.bonus *= self.c_effect_m
-        self.new_hp = round(self.hp*(p.max_hp if self.affect_max else self.bonus))
-        self.new_mp = round(self.mp*(p.max_sp if self.affect_max else self.bonus))
-        self.new_sp = round(self.sp*(p.max_mp if self.affect_max else self.bonus))
-        self.new_phyatk = round(self.phyatk*(p.max_phyatk if self.affect_max else self.bonus))
-        self.new_phydef = round(self.phydef*(p.max_phydef if self.affect_max else self.bonus))
-        self.new_agility = round(self.agility*(p.max_agility if self.affect_max else self.bonus))
-        self.new_finess = round(self.finess*(p.max_finess if self.affect_max else self.bonus))
-        self.new_magatk = round(self.magatk*(p.max_magatk if self.affect_max else self.bonus))
-        self.new_magdef = round(self.magdef*(p.max_magdef if self.affect_max else self.bonus))
-        self.new_resistance = round(self.resistance*(p.max_resistance if self.affect_max else self.bonus))
-        self.new_special = round(self.special*(p.max_special if self.affect_max else self.bonus))
-        self.new_athletics = round(self.athletics*(p.max_athletics if self.affect_max else self.bonus))
-        self.new_acrobatics = round(self.acrobatics*(p.max_acrobatics if self.affect_max else self.bonus))
-        self.new_stealth = round(self.stealth*(p.max_stealth if self.affect_max else self.bonus))
-        self.new_sleight = round(self.sleight*(p.max_sleight if self.affect_max else self.bonus))
-        self.new_investigation = round(self.investigation*(p.max_investigation if self.affect_max else self.bonus))
-        self.new_insight = round(self.insight*(p.max_insight if self.affect_max else self.bonus))
-        self.new_perception = round(self.perception*(p.max_perception if self.affect_max else self.bonus))
-        self.new_deception = round(self.deception*(p.max_deception if self.affect_max else self.bonus))
-        self.new_intimidation = round(self.intimidation*(p.max_intimidation if self.affect_max else self.bonus))
-        self.new_persuasion = round(self.persuasion*(p.max_persuasion if self.affect_max else self.bonus))
-        self.new_performance = round(self.performance*(p.max_performance if self.affect_max else self.bonus))
-        self.new_karma = round(self.karma*(p.max_karma if self.affect_max else self.bonus))
-        self.save = round(self.save*self.bonus)
+
+        attributes = gl.SKILLS + gl.STATS + ["save", "karma"]
+
+        for attr in attributes:
+            if attr in ["save", "karma"]:
+                if attr == "save":
+                    self.save = round(self.save*self.bonus)
+                else:
+                    self.new_karma = round(self.karma*(p.max_karma if self.affect_max else self.bonus))
+            else:
+                new_val = round(getattr(self, attr)*(getattr(self, f"max_{attr}") if self.affect_max else self.bonus))
+                effect, excession = fs.is_max(p, attr, new_val)
+                effect = effect-excession  # If the spell will exceed level 100, it will reduce the potency to below 100
+                setattr(self, f"new_{attr}", effect)
 
     def update_effect(self, effect: int) -> None:
         if self.ept:
@@ -288,8 +281,11 @@ class Effect_SoulLink(Effect):
         else:
             return "damage"
 
-def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False, use_religion: str = None, affect_max: bool = False, spell_effect: int = 0, ceff: int = 0):
+def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False, use_religion: str = None, affect_max: bool = False, spell_effect: int = 0, ceff: int = 0, heal_tag: list[str] = None):
+    error: bool = False
+    heal_tag = heal_tag if heal_tag is not None else []
     effects_list = {
+        "error": Effect("Error", 1, 1, 1),
         # Spell Effects
         "ignite": Effect("Ignite", time=tim, time_left=tim, ept=True, effect=-0.2, success=succ, is_effect=use_effect, spell_effect=spell_effect, effect_type="debuff"),
         "corrosion": Effect("Corrosion", time=tim, time_left=tim, phydef=-1, is_effect=True, success=succ, effect_type="debuff"),
@@ -307,8 +303,8 @@ def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = Fals
         "cleansing_light": Effect("Cleansing Light", time=tim, time_left=tim, success=succ),
         "vulpine_mirror": Effect_VulpineMirror("Vulpine Mirror", time=tim, time_left=tim, success=succ, is_effect=True, activate_unique=["attacked"]),
         "halo_of_the_tamer": Effect("Halo of The Tamer", time=tim, time_left=tim, success=succ),
-        "sanctified_ground": Effect("Sanctified Ground", time=tim, time_left=tim, success=succ, ept=True, effect=1, is_effect=True),
-        "sanctified_ground_floor": Effect("Sanctified Ground Floor", time=tim, time_left=tim, success=succ, ept=True, effect=spell_effect, is_effect=True),
+        "sanctified_ground": Effect("Sanctified Ground", time=tim, time_left=tim, success=succ, ept=True, effect=1, is_effect=True, heal_tag=heal_tag),
+        "sanctified_ground_floor": Effect("Sanctified Ground Floor", time=tim, time_left=tim, success=succ, ept=True, effect=spell_effect, is_effect=True, heal_tag=heal_tag),
         "astral_tailwind": Effect("Astral Tailwind", time=tim, time_left=tim, success=succ),
         "soul_link": Effect_SoulLink("Soul Link", time=tim, time_left=tim, success=succ, activate_unique=["attacked"]),
         "suppressed": Effect("Suppresed", time=tim, time_left=tim, success=succ, effect_type="debuff"),
@@ -335,5 +331,12 @@ def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = Fals
         "strength": Effect("Strength", time=tim, time_left=tim, success=succ, phyatk=25, athletics=10, resistance=-10),
         "swiftness": Effect("Swiftness", time=tim, time_left=tim, success=succ, agility=25, acrobatics=10, resistance=-10)
     }
-    effect = effects_list[effect_name]
-    return effect
+    try:
+        effect = effects_list[effect_name]
+    except KeyError:
+        gl.print_debugg("ERROR", f"The effect '{effect_name}' could not be found...")
+        error = True
+    if error:
+        return effects_list["error"]
+    else:
+        return effect

@@ -26,6 +26,24 @@ def is_type(input, type: type) -> bool:
     else:
         return False
     
+def is_max(character: object, attribute: str, effect: int, mode: str = "d") -> list[int, int]: # Effect value, excession
+    """Checks if the effect will exceed, if it does, will cap to 100,
+    otherwise it will return the value."""
+    attri: int = getattr(character, f"new_{attribute}")
+    cap = 100
+    if mode == "karma":
+        cap = 500
+    if attri >= 0:
+        if attri + effect > cap:
+            return [effect, (attri+effect)-cap]
+        else:
+            return [effect, 0]
+    else:
+        if attri + effect < cap:
+            return [effect, (attri+effect)-cap]
+        else:
+            return [effect, 0]
+
 def is_sheet(creds: str, sheetname: str):
     try:
         service = build("drive", "v3", credentials=creds)

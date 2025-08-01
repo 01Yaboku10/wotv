@@ -27,7 +27,9 @@ class Race():
                  intimidation: int = 0,
                  persuasion: int = 0,
                  performance: int = 0,
-                 abilites: list[str] = None) -> None:
+                 abilites: list[str] = None,
+                 alive: bool = True
+                 ) -> None:
         self.name = name
         self.type = type
         self.level = level
@@ -55,6 +57,7 @@ class Race():
         self.intimidation = intimidation
         self.persuasion = persuasion
         self.performance = performance
+        self.alive = alive
 
         self.abilites = abilites if abilites is not None else []
 
@@ -82,9 +85,9 @@ def race_list(race_name: str, level: int) -> object:
         # Demi-Human
         "bafolk": Race("Bafolk", "demi-human", level, power_level=25, hp=5, mp=0, sp=4, phyatk=5, phydef=4, agility=2, finess=2, magatk=0, magdef=1, resistance=1, athletics=2, acrobatics=1, deception=1, intimidation=1),
         "bafolk_lord": Race("Bafolk Lord", "demi-human", level, power_level=50, hp=1, sp=1, phyatk=1, agility=1, finess=1, magdef=1, resistance=1, special=1, athletics=3, acrobatics=2, deception=2, intimidation=2),
-        "fairy": Race("Fairy", "demi-human", level, power_level=30, hp=2, mp=3, sp=1, phyatk=1, phydef=1, agility=4, finess=2, magatk=3, magdef=2, resistance=2, special=1, acrobatics=2, stealth=1, sleight=1, investigation=1, insight=1, perception=2, performance=2),
+        "fairy": Race("Fairy", "demi-human", level, power_level=30, hp=2, mp=3, sp=1, phyatk=1, phydef=1, agility=3, finess=2, magatk=2, magdef=2, resistance=2, special=1, acrobatics=2, stealth=1, sleight=1, investigation=1, insight=1, perception=2, performance=2),
         "fairy_lord": Race("Fairy Lord", "demi-human", level, power_level=50, hp=1, mp=1, sp=1, agility=1, finess=2, magatk=1, magdef=1, resistance=1, special=1, acrobatics=1, investigation=1, insight=2, perception=2, performance=2),
-        "fairy_king": Race("Fairy King", "demi-human", level, power_level=140, hp=1, mp=1, sp=1, agility=1, magatk=1, magdef=1, resistance=1, special=1, acrobatics=1, stealth=1, sleight=1, investigation=2, insight=2, perception=2, intimidation=1, persuasion=1, performance=1),
+        "fairy_king": Race("Fairy King", "demi-human", level, power_level=140, hp=1, mp=1, sp=1, agility=1, magatk=2, magdef=1, resistance=1, special=1, acrobatics=1, stealth=1, sleight=1, investigation=2, insight=2, perception=2, intimidation=1, persuasion=1, performance=1),
         "goblin": Race("Goblin", "demi-human", level, power_level=20, hp=2, sp=1, phyatk=1, phydef=1, agility=1, finess=1, magdef=1, magatk=1, resistance=1, special=1, sleight=1, perception=1),
         "goblin_lord": Race("Goblin Lord", "demi-human", level, power_level=40, hp=2, mp=1, sp=1, phyatk=1, phydef=1, agility=2, athletics=1, acrobatics=1, stealth=1, sleight=1, perception=1),
         "goblin_strategist": Race("Goblin Strategist", "demi-human", level, power_level=100, hp=2, mp=3, sp=3, phydef=1, magdef=1, special=2, persuasion=2, perception=2),
@@ -93,7 +96,11 @@ def race_list(race_name: str, level: int) -> object:
         "spirit": Race("Spirit", "heteromorph", level, power_level=30, hp=2, mp=2, sp=1, phyatk=1, phydef=1, agility=2, finess=1, magatk=2, magdef=2, resistance=2, special=2, performance=2, stealth=2),
         "greater_spirit": Race("Greater Spirit", "heteromorph", level, power_level=50, hp=2, mp=2, sp=2, phyatk=1, phydef=1, agility=2, finess=1, magatk=2, magdef=2, resistance=2, special=2, performance=2, stealth=1),
         "spirit_god": Race("Spirit God", "heteromorph", level, power_level=140, hp=3, mp=4, sp=4, phyatk=2, phydef=2, agility=2, finess=2, magatk=2, magdef=1, resistance=3, special=1, perception=3, intimidation=2),
-        "royal_spirit": Race("Royal Spirit", "heteromorph", level, power_level=200, hp=2, mp=3, sp=2, phyatk=2, phydef=2, magatk=2, magdef=2, resistance=2, special=2, insight=5, persuasion=2)
+        "royal_spirit": Race("Royal Spirit", "heteromorph", level, power_level=200, hp=2, mp=3, sp=2, phyatk=2, phydef=2, magatk=2, magdef=2, resistance=2, special=2, insight=5, persuasion=2),
+        "doppelgänger": Race("Doppelgänger", "heteromorph", level, power_level=30, hp=1, mp=1, sp=1, phyatk=1, magatk=1, phydef=1, magdef=1, agility=1, finess=1, resistance=1, special=2, performance=2, persuasion=2, deception=2),
+        "greater_doppelgänger": Race("Greater Doppelgänger", "heteromorph", level, power_level=60, hp=1, mp=1, special=1, performance=2, deception=2, persuasion=2),
+        "true_doppelgänger": Race("True Doppelgänger", "heteromorph", level, power_level=120, hp=2, mp=2, special=2, performance=2, deception=2, persuasion=2),
+        "skeleton": Race("Skeleton", "heteromorph", level, power_level=20, hp=1, phyatk=1, phydef=1, finess=1, resistance=1, alive=False)
     }
     racial_class = racial_class_list[race_name]
     return racial_class

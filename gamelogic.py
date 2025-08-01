@@ -27,6 +27,9 @@ def print_debugg(category: str, message: str):
         fore = Fore.GREEN
     print(f"{fore}[{category.upper()}]{Style.RESET_ALL} {message}")
 
+def print_menu(menu: str):
+    print(f"---------={menu}=---------")
+
 def capitalize_string(string: str, splitter: str) -> str:
     new_string = ""
     if string is not None:

@@ -148,7 +148,8 @@ def item_list(item_name: str, level: int):
         "healing_potion": Item("Healing Potion", "consumable", level, weight=0.5, hp=50, status_effects=[ef.effect_list("anti-resistance", 3, 1)]),
 
         # Unique
-        "spirit_bracelet": Item("Bracelet of Zauz", "equipment", level, "light", 0.2, hp=2, mp=10, magatk=4, magdef=4, athletics=2, slot=["br"])
+        "spirit_bracelet": Item("Bracelet of Zauz", "equipment", level, "light", 0.2, hp=2, mp=10, magatk=4, magdef=4, athletics=2, slot=["br"]),
+        "sacret_grimoire_sylvestris": Item("Sacret Grimoire Sylvesstris", "equipment", 2, None, 2, magatk=10, special=10, intimidation=2, slot=["rh", "lh"])
 
     }
     item = items_list[item_name]

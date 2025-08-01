@@ -11,6 +11,7 @@ init(autoreset=True)
 
 # ID Accounts:
 # 0000: Characters
+# 1000: Monsters
 # 5000: Summons
 # 9000: Obstacles
 
@@ -158,8 +159,6 @@ class Character():
         self.race_type_list = []
         self.armor_classes = []
         self.armor_class = "None"
-
-        self.undead_list = ["skeleton", "zombie", "dark_wisdom"]
 
         if self.character_type != "Barrier":
             self.update_race()
@@ -589,7 +588,8 @@ class Character():
 
         for race in self.racial_classes:
             name, level = race
-            if name in self.undead_list:
+            race_class = racial_classes.race_list(name, level)
+            if not race_class.alive:
                 self.race_type[1] = "undead"
 
         if fs.is_attrib(self, "race_type") and self.race_type:
@@ -1172,15 +1172,32 @@ class Character():
             self.max_performance += effect.new_performance
             self.max_karma += effect.new_karma
 
-    def attribute_add(self, attribute: str, effect: int, do_print: bool = False):
+    def attribute_add(self, attribute: str, effect: int, do_print: bool = False, spell: object = None):
         """Use this to ensure no heal/effect exceeds MAX of an attribute"""
         new_attrib: int = getattr(self, f"new_{attribute}")
         max_attrib: int = getattr(self, f"max_{attribute}")
+        reverse = False
         if new_attrib+effect > max_attrib:
             updated_attrib = max_attrib
         else:
             new_attrib += effect
             updated_attrib = new_attrib
+        
+        if spell is not None:
+            if spell.heal_tag:
+                tagged = None
+                for tag in spell.heal_tag:
+                    if tag == "alive":
+                        tagged = tag
+                    elif tag == "undead":
+                        tagged = tag
+                character_tag = self.race_type[1]
+                if character_tag != tagged:
+                    reverse = True
+        
+        if reverse:
+            updated_attrib = -updated_attrib
+
         setattr(self, f"new_{attribute}", updated_attrib)
         if do_print:
             heal = "healed" if updated_attrib > 0 else "damaged"

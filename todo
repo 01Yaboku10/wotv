@@ -1,2 +1,6 @@
-Fix the immunities. Perhaps have a "unique" check that checks magic attribute when attacked?
-Make the game also remove debuffs when a person casts immunity. E.g (person is on fire -> person casts fire immunity -> fire dissapears)
+Create more abilites
+
+Create chest/bag system to quickly pick up and leave loot.
+perhaps make a global system where a bag is an object with an inventory?
+
+Add so that bags/chests are saved to the scenario

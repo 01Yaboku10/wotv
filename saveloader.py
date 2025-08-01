@@ -339,10 +339,11 @@ def load_characters(directory: str):
                                 if equipment:
                                     equipment_key = f"equipment_{slot}"
                                     character_data[equipment_key] = equipment
-                        elif value.isdigit():
-                            character_data[var_name] = int(value)
                         else:
-                            character_data[var_name] = value
+                            try:
+                                character_data[var_name] = int(value)  # For integers
+                            except ValueError:
+                                character_data[var_name] = value  # For Strings
 
             # Create a Character object using the character_data dictionary
             character = ch.Character(
@@ -758,10 +759,11 @@ def load_scenario(scenario_name: str):
                             floors_dict[prefix] = floor
                             gl.print_debugg("DEBUGG", f"Creating Floor Effect {floor.name}...")
                         scenario_data[var_name] = floors_dict
-                    elif value.isdigit():
-                        scenario_data[var_name] = int(value)  # For integers
                     else:
-                        scenario_data[var_name] = value  # For strings
+                        try:
+                            scenario_data[var_name] = int(value)  # For integers
+                        except ValueError:
+                            scenario_data[var_name] = value  # For Strings
 
             elif line.startswith("Player"):  # PLAYER
 
@@ -880,10 +882,11 @@ def load_scenario(scenario_name: str):
                                 summon.prefix = s_prefix
                                 p_summons.append((summon, time))
                         character_data[var_name] = p_summons
-                    elif value.isdigit():
-                        character_data[var_name] = int(value)  # For integers
                     else:
-                        character_data[var_name] = value  # For Strings
+                        try:
+                            character_data[var_name] = int(value)  # For integers
+                        except ValueError:
+                            character_data[var_name] = value  # For Strings
 
                 # Add to lists
                 if player.id in assigned_players:

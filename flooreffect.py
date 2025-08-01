@@ -14,7 +14,7 @@ def floor_list(floor_effect: str, effect: int = 0, spell: str = None, caster: st
     floor_dict = {
         "fire": Floor("Fire", effect, spell, caster, time, status_effects=[ef.effect_list("ignite", 1, 1, True, spell_effect=effect)]),
         "illuminated_path": Floor("Illuminated Path", effect, spell, caster, 2, status_effects=[ef.effect_list("illuminated_path", 1, 1)]),
-        "sanctified_ground": Floor("Sanctified Ground", effect, spell, caster, time, status_effects=[ef.effect_list("sanctified_ground_floor", 1, 1, spell_effect=effect), ef.effect_list("charm_immunity", 1, 1)]),
+        "sanctified_ground": Floor("Sanctified Ground", effect, spell, caster, time, status_effects=[ef.effect_list("sanctified_ground_floor", 1, 1, spell_effect=effect, heal_tag=["alive"]), ef.effect_list("charm_immunity", 1, 1)]),
         "light_eternal": Floor("Light Eternal", effect, spell, caster, time, status_effects=[ef.effect_list("light_eternal", 1, 1)])
     }
     return floor_dict[floor_effect]
