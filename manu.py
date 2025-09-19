@@ -310,17 +310,8 @@ def edit_character(player: object):
     character_menu()
 
 def save_character():
-    while True:
-        chara = input("Save character with id: ")
-        if chara == "SA":
-            players: list[object] = []
-            for key, player in ch.character_dic.items():
-                players.append(player)
-            sl.save_all("character_saves", players)
-            break
-        else:
-            if not fs.is_player(chara):
-                continue
-            sl.save_all("character_saves", [ch.character_dic.get(chara)])
-            break
+    players: list[object] = []
+    for key, player in ch.character_dic.items():
+        players.append(player)
+    sl.save_all("character_saves", players)
     character_menu()

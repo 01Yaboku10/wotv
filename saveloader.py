@@ -52,129 +52,75 @@ def save_all(directory: str, players: list[object]):
     with open(file_path, "w", encoding="utf-8") as save:
         for line in lines:
             save.write(line)
-    for player in players:
-        print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Saving {player.firstname}")
-        save_character(directory, player)
+
+    save_character(directory, players)
     if save_check(file_path):
         os.remove(true_path)
         os.rename(file_path, true_path)
 
-def save_character(directory: str, character: object):
+def save_character(directory: str, characters: list[object]):
     create_savefolder(directory)
-    c = character
-    character_found = False
     character_id = "characters_temp.txt"
     file_path = os.path.join(directory, character_id)
-
-    # Read the file and store lines in a list
-    with open(file_path, "r", encoding="utf-8") as file:
-        lines = file.readlines()
     
     with open(file_path, "w", encoding="utf-8") as save:
-        for line in lines:
-            if line.startswith("*"):
+        for c in characters:
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Saving {c.firstname}")
+            if c.id > 1000:
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Spawnable Entity detected, skipping...")
                 continue
             spirits = []
-            if not c.character_type == "spirit":
-                for index, spirit in enumerate(c.spirits):
+            if c.character_type != "spirit":
+                for spirit in c.spirits:
                     if not fs.is_type(spirit, int):
                         spirits.append(spirit.id)
                     else:
                         spirits.append(spirit)
-            if f"ID:{c.id}" in line:
-                save.write(f"//ID:{c.id}"
-                            f"//Firstname:{c.firstname}"
-                            f"//Surname:{c.surname}"
-                            f"//Nicknames:{c.nicknames}"
-                            f"//Type:{c.character_type}"
-                            f"//RaceType:{c.race_type}"
-                            f"//Occupation:{c.occupation}"
-                            f"//Residence:{c.residence}"
-                            f"//Attribute:{c.attribute}"
-                            f"//BalanceBreaker:{c.balance_breaker}"
-                            f"//Spirits:{spirits}"
-                            f"//Master:{c.master}"
-                            f"//VasselSlot:{c.equip_slot}"
-                            f"//Races:{c.racial_classes}"
-                            f"//Jobs:{c.job_classes}"
-                            f"//Power:{c.power_level}"
-                            f"//Karma:{c.karma}"
-                            f"//Religion:{c.religion}"
-                            f"//HP:{c.hp}"
-                            f"//MP:{c.mp}"
-                            f"//SP:{c.sp}"
-                            f"//PHY.ATK:{c.phyatk}"
-                            f"//PHY.DEF:{c.phydef}"
-                            f"//Agility:{c.agility}"
-                            f"//Finess:{c.finess}"
-                            f"//MAG.ATK:{c.magatk}"
-                            f"//MAG.DEF:{c.magdef}"
-                            f"//Resistance:{c.resistance}"
-                            f"//Special:{c.special}"
-                            f"//Athletics:{c.athletics}"
-                            f"//Acrobatics:{c.acrobatics}"
-                            f"//Stealth:{c.stealth}"
-                            f"//Sleight:{c.sleight}"
-                            f"//Investigation:{c.investigation}"
-                            f"//Insight:{c.insight}"
-                            f"//Perception:{c.perception}"
-                            f"//Deception:{c.deception}"
-                            f"//Intimidation:{c.intimidation}"
-                            f"//Persuasion:{c.persuasion}"
-                            f"//Performance:{c.performance}"
-                            f"//Weight:({c.weight}, {c.max_weight})"
-                            f"//Gold:({c.gold}, {c.silver}, {c.bronze})"
-                            f"//Inventory:{c.inventory}"
-                            f"//Equipment:({c.equipment_h}, {c.equipment_c}, {c.equipment_l}, {c.equipment_s}, {c.equipment_g}, {c.equipment_be}, {c.equipment_rh}, {c.equipment_lh}, {c.equipment_n}, {c.equipment_r1}, {c.equipment_r2}, {c.equipment_br})\n")
-                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character Updated")
-                character_found = True
-            else:
-                save.write(line)
-        if not character_found:
             save.write(f"//ID:{c.id}"
-                            f"//Firstname:{c.firstname}"
-                            f"//Surname:{c.surname}"
-                            f"//Nicknames:{c.nicknames}"
-                            f"//Type:{c.character_type}"
-                            f"//RaceType:{c.race_type}"
-                            f"//Occupation:{c.occupation}"
-                            f"//Residence:{c.residence}"
-                            f"//Attribute:{c.attribute}"
-                            f"//BalanceBreaker:{c.attribute}"
-                            f"//Spirits:{c.spirits}"
-                            f"//Master:{c.master}"
-                            f"//VasselSlot:{c.equip_slot}"
-                            f"//Races:{c.racial_classes}"
-                            f"//Jobs:{c.job_classes}"
-                            f"//Power:{c.power_level}"
-                            f"//Karma:{c.karma}"
-                            f"//Religion:{c.religion}"
-                            f"//HP:{c.hp}"
-                            f"//MP:{c.mp}"
-                            f"//SP:{c.sp}"
-                            f"//PHY.ATK:{c.phyatk}"
-                            f"//PHY.DEF:{c.phydef}"
-                            f"//Agility:{c.agility}"
-                            f"//Finess:{c.finess}"
-                            f"//MAG.ATK:{c.magatk}"
-                            f"//MAG.DEF:{c.magdef}"
-                            f"//Resistance:{c.resistance}"
-                            f"//Special:{c.special}"
-                            f"//Athletics:{c.athletics}"
-                            f"//Acrobatics:{c.acrobatics}"
-                            f"//Stealth:{c.stealth}"
-                            f"//Sleight:{c.sleight}"
-                            f"//Investigation:{c.investigation}"
-                            f"//Insight:{c.insight}"
-                            f"//Perception:{c.perception}"
-                            f"//Deception:{c.deception}"
-                            f"//Intimidation:{c.intimidation}"
-                            f"//Persuasion:{c.persuasion}"
-                            f"//Performance:{c.performance}"
-                            f"//Weight:({c.weight}, {c.max_weight})"
-                            f"//Gold:({c.gold}, {c.silver}, {c.bronze})"
-                            f"//Inventory:{c.inventory}"
-                            f"//Equipment:({c.equipment_h}, {c.equipment_c}, {c.equipment_l}, {c.equipment_s}, {c.equipment_g}, {c.equipment_be}, {c.equipment_rh}, {c.equipment_lh}, {c.equipment_n}, {c.equipment_r1}, {c.equipment_r2}, {c.equipment_br})\n")
+                        f"//Firstname:{c.firstname}"
+                        f"//Surname:{c.surname}"
+                        f"//Nicknames:{c.nicknames}"
+                        f"//Type:{c.character_type}"
+                        f"//RaceType:{c.race_type}"
+                        f"//Occupation:{c.occupation}"
+                        f"//Residence:{c.residence}"
+                        f"//Attribute:{c.attribute}"
+                        f"//BalanceBreaker:{c.balance_breaker}"
+                        f"//Spirits:{spirits}"
+                        f"//Master:{c.master}"
+                        f"//VasselSlot:{c.equip_slot}"
+                        f"//Races:{c.racial_classes}"
+                        f"//Jobs:{c.job_classes}"
+                        f"//Power:{c.power_level}"
+                        f"//Karma:{c.karma}"
+                        f"//Religion:{c.religion}"
+                        f"//HP:{c.hp}"
+                        f"//MP:{c.mp}"
+                        f"//SP:{c.sp}"
+                        f"//PHY.ATK:{c.phyatk}"
+                        f"//PHY.DEF:{c.phydef}"
+                        f"//Agility:{c.agility}"
+                        f"//Finess:{c.finess}"
+                        f"//MAG.ATK:{c.magatk}"
+                        f"//MAG.DEF:{c.magdef}"
+                        f"//Resistance:{c.resistance}"
+                        f"//Special:{c.special}"
+                        f"//Athletics:{c.athletics}"
+                        f"//Acrobatics:{c.acrobatics}"
+                        f"//Stealth:{c.stealth}"
+                        f"//Sleight:{c.sleight}"
+                        f"//Investigation:{c.investigation}"
+                        f"//Insight:{c.insight}"
+                        f"//Perception:{c.perception}"
+                        f"//Deception:{c.deception}"
+                        f"//Intimidation:{c.intimidation}"
+                        f"//Persuasion:{c.persuasion}"
+                        f"//Performance:{c.performance}"
+                        f"//Weight:({c.weight}, {c.max_weight})"
+                        f"//Gold:({c.gold}, {c.silver}, {c.bronze})"
+                        f"//Inventory:{c.inventory}"
+                        f"//Equipment:({c.equipment_h}, {c.equipment_c}, {c.equipment_l}, {c.equipment_s}, {c.equipment_g}, {c.equipment_be}, {c.equipment_rh}, {c.equipment_lh}, {c.equipment_n}, {c.equipment_r1}, {c.equipment_r2}, {c.equipment_br})\n")
+            print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character Updated")
     print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Character {c.id} saved to {directory}.")
 
 def load_characters(directory: str):
@@ -644,7 +590,8 @@ def load_scenario(scenario_name: str):
         "Turn": "turn",
         "Player Turn": "playerturn",
         "Obstacles": "obstacles",
-        "Floor": "floor"
+        "Floor": "floor",
+        "Chests": "chests"
     }
 
     scenario_data = {
@@ -654,7 +601,8 @@ def load_scenario(scenario_name: str):
         'playerturn': 0,
         'mode': None,
         'obstacles': {},
-        'floor': {}
+        'floor': {},
+        'chests': {}
     }
 
     attribute_map = {
@@ -759,6 +707,20 @@ def load_scenario(scenario_name: str):
                             floors_dict[prefix] = floor
                             gl.print_debugg("DEBUGG", f"Creating Floor Effect {floor.name}...")
                         scenario_data[var_name] = floors_dict
+                    elif key in ["Chests"]:
+                        gl.print_debugg("DEBUGG", "Checking for Chests...")
+                        chests_dict: dict = {}
+                        chests: list[list[str, list[str, int, int]]] = ast.literal_eval(value)  # [chest_name, [[item_name, level, amount]]]
+                        if not chests:
+                            continue
+                        for ches in chests:
+                            chest_items: list = []
+                            chest_name, items = ches  # items: list[list[str, int, int]]
+                            for item in items:
+                                chest_items.append([item[0], item[1], item[2]])
+                            chests_dict[chest_name] = chest_items
+                            gl.print_debugg("DEBUGG", f"Created chest '{chest_name}'")
+                        scenario_data[var_name] = chests_dict
                     else:
                         try:
                             scenario_data[var_name] = int(value)  # For integers
@@ -825,11 +787,11 @@ def load_scenario(scenario_name: str):
 
                 p_id = info[0].split(":")[1] # Expects Player ID in the first attribute
                 player: object = ch.character_dic.get(str(p_id))  # PLAYER
-                player.barriers = []
-                player.cooldowns = {}
                 if player is None:
                     print(f"{Fore.RED}[WARNING]{Style.RESET_ALL} PLAYER NOT FOUND, SKIPPING PLAYER WITH ID {p_id}")
                     continue
+                player.barriers = []
+                player.cooldowns = {}
 
                 # Add Attributes to dictionary
                 for attr in info:
@@ -915,7 +877,7 @@ def load_scenario(scenario_name: str):
                 player_objects.append(assigned_player)
                 player_prefixes[character_data["prefix"]] = assigned_player
                 player_effects.clear()
-        scenario = (scenario_data["name"], scenario_data["turn"], player_objects, scenario_data["playerturn"], scenario_data["mode"], scenario_data["obstacles"], scenario_data["floor"])
+        scenario = (scenario_data["name"], scenario_data["turn"], player_objects, scenario_data["playerturn"], scenario_data["mode"], scenario_data["obstacles"], scenario_data["floor"], scenario_data["chests"])
     
     return assigned_players, player_objects, player_prefixes, scenario
 
@@ -925,14 +887,21 @@ def save_scenario(scenario: object) -> None:
     save_file_true: str = os.path.join("scenario_saves", f"scenario_{s.name}.txt")
     file_path = os.path.join("scenario_saves", "scenario_temp.txt")
     
+    gl.print_debugg("DEBUGG", "Saving scenario...")
     with open(file_path, "w", encoding="utf-8") as save:
         # INIT
-        obstacles = []
-        floor = []
-        for key, obs in s.obstacles.items():
+        obstacles: list[list] = []
+        floor: list[list] = []
+        chests: list[list[str, list[str, int, int]]] = []
+        for key, obs in s.obstacles.items():  # Obstacles
             obstacles.append([key, gl.uncapitalize_string(obs.firstname, " "), obs.new_hp])
-        for key, flo in s.floor.items():
+        for key, flo in s.floor.items():  # Floor Effects
             floor.append([key, gl.uncapitalize_string(flo.name, " "), flo.effect, flo.spell, flo.caster, flo.time])
+        for key, chest in s.chests.items():  # Chests
+            items = []
+            for item in chest:
+                items.append(item)
+            chests.append([key, items])
 
         save.write(f"Init/&/"
                    f"Name:{s.name}"
@@ -940,8 +909,9 @@ def save_scenario(scenario: object) -> None:
                    f"//Turn:{s.turn}"
                    f"//Player Turn:{s.playerturn}"
                    f"//Obstacles:{obstacles}"
-                   f"//Floor:{floor}\n")
-        
+                   f"//Floor:{floor}"
+                   f"//Chests:{chests}\n")
+        gl.print_debugg("DEBUGG", "Saved scenario data")
         # PLAYERS
         for p in s.players:
             effects: list[object] = [eff for eff in p.status_effects]
@@ -1008,6 +978,8 @@ def save_scenario(scenario: object) -> None:
     with open(file_path, "r", encoding="utf-8") as file:
         lines = file.readlines()
     if not save_check(file_path, "s"):
+        gl.print_debugg("ERROR", "An unexpected error occured when trying to save the scenario...")
+        gl.print_debugg("ERROR", "Check the temporary save file for details")
         return
     
     os.remove(save_file_true)  # Remove old save file
@@ -1018,3 +990,6 @@ def save_scenario(scenario: object) -> None:
     if save_check(save_file_true, "s"):
         os.remove(file_path)  # Remove temp file
         print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Scenario {s.name} saved successfuly.")
+    else:
+        gl.print_debugg("ERROR", "An unexpected error occured when trying to save the scenario...")
+        gl.print_debugg("ERROR", "Check the temporary save file for details")

@@ -1,4 +1,5 @@
 from colorama import Fore, Style, init
+from typing import Any
 import job_classes
 import racial_classes
 import gamelogic as gl
@@ -224,30 +225,45 @@ class Character():
         )
     )
 
+    def __format__(self, format_spec: Any) -> str:
+        match format_spec:
+            case "equipment":
+                return (
+                        "---------=Equipment=---------\n"
+                        f"Helmet:{self.equipment_h}\n"
+                        f"Chestplate:{self.equipment_c}\n"
+                        f"Leggings:{self.equipment_l}\n"
+                        f"Shoes:{self.equipment_s}\n"
+                        f"Gloves:{self.equipment_g}\n"
+                        f"Belt:{self.equipment_be}\n"
+                        f"Right Hand:{self.equipment_rh}\n"
+                        f"Left Hand:{self.equipment_lh}\n"
+                        f"Necklace:{self.equipment_n}\n"
+                        f"Ring:{self.equipment_r1}\n"
+                        f"Ring:{self.equipment_r2}\n"
+                        f"Bracelet:{self.equipment_br}\n"
+                        "---------=Gold=---------\n"
+                        f"Gold:{self.gold}/{self.silver}/{self.bronze}\n"
+                        "---------=Inventory=---------\n"
+                        f"{self.inventory}\n"
+                        )
+            case "inventory":
+                if not self.inventory:
+                    return print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Inventory is Empty!")
+                inven: str = f"------={self.firstname}'s Inventory=------\n"
+                for index, (item, amount) in enumerate(self.inventory):
+                    inven += f"[{index+1}] {item} {amount}\n"
+                return inven
+            case "mini":
+                return (
+                    f"{self.firstname} {self.surname} {self.prefix}"
+                )
+            case _:
+                raise ValueError("Unknown specifier for Character()")
+
     def barrier(self):
         self.new_hp *= self.effect
         self.max_hp *= self.effect
-
-    def print_eq(self):
-        print(
-        "---------=Equipment=---------\n"
-        f"Helmet:{self.equipment_h}\n"
-        f"Chestplate:{self.equipment_c}\n"
-        f"Leggingss:{self.equipment_l}\n"
-        f"Shoes:{self.equipment_s}\n"
-        f"Gloves:{self.equipment_g}\n"
-        f"Belt:{self.equipment_be}\n"
-        f"Right Hand:{self.equipment_rh}\n"
-        f"Left Hand:{self.equipment_lh}\n"
-        f"Necklace:{self.equipment_n}\n"
-        f"Ring:{self.equipment_r1}\n"
-        f"Ring:{self.equipment_r2}\n"
-        f"Bracelet:{self.equipment_br}\n"
-        "---------=Gold=---------\n"
-        f"Gold:{self.gold}/{self.silver}/{self.bronze}\n"
-        "---------=Inventory=---------\n"
-        f"{self.inventory}\n"
-        )
 
     def id_check(self):
         if not self.racial_classes:
@@ -378,7 +394,7 @@ class Character():
         else:
             print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Power Check: {Fore.GREEN}[FAILED]{Style.RESET_ALL}")
     
-    def equipment_check(self):
+    def equipment_check(self, update: bool = True):
         #print("DEBUGG: RUNNING EQUIP CHECK")
         self.weight = 0
         equipments = ["equipment_h", "equipment_c", "equipment_l", "equipment_s", "equipment_g", "equipment_be", "equipment_rh", "equipment_lh", "equipment_n", "equipment_r1", "equipment_r2", "equipment_br"]
@@ -473,7 +489,7 @@ class Character():
         #  Emcumberment
         self.weight_check()
 
-        if fs.is_attrib(self, "prefix"):
+        if self.prefix is not None and update:
             sl.update_sheet(self)
 
     def weight_check(self):
@@ -772,17 +788,24 @@ class Character():
             else:
                 print(f"{Fore.RED}[ERROR]{Style.RESET_ALL} Not in range")
 
-    def equipment_add(self):
+    def equipment_add(self, add_item: str = None, level: int = None, amount: int = None, update: bool = True):
+        """
+        The parameters can be used to skip the questions if the item is pre-made from
+        a chest or something similar.
+        """
         self.equipment_reset()
-        print("-------------------------")
-        add_item: str = input("Add item: ").lower()
-        if add_item == "Q":
-            self.equipment_check()
-            return
-        if not fs.is_item(add_item):
-            self.equipment_check()
-            return
-        level: int = fs.is_int(input("Item Level [1-5]: "))
+        if add_item is None:
+            print("-------------------------")
+            add_item: str = input("Add item, [Q]: ").lower()
+            if add_item == "Q":
+                self.equipment_check()
+                return
+            if not fs.is_item(add_item):
+                self.equipment_check()
+                gl.print_debugg("ERROR", f"The item '{add_item}' could not be found in the registry.")
+                return
+        if level is None:
+            level: int = fs.is_int(input("Item Level [1-5]: "))
         equipment: object = it.item_list(add_item, level)
         if equipment.type == "equipment":
             choice = input("Equip item? [Y/N]: ").upper()
@@ -791,12 +814,13 @@ class Character():
             else:
                 self.inventory_add((add_item, level), 1)
         else:
-            amount = fs.is_int(input("Amount: "))
+            if amount is None:
+                amount = fs.is_int(input("Amount: "))
             if equipment.type == "consumable":
                 self.inventory_add((add_item, level), amount)
             else:
                 self.inventory_add(add_item, amount)
-        self.equipment_check()
+        self.equipment_check(update)
 
     def equipment_remove(self):
         self.equipment_reset()
@@ -868,7 +892,6 @@ class Character():
             setattr(self, equip_slot, None) # Empty slot
         self.equipment_check()
 
-# TODO
     def equipment_all_equip(self):
         self.equipment_reset()
         self.equipment_all_unequip(False)
@@ -1005,7 +1028,7 @@ class Character():
             for i, (item, amount) in enumerate(self.inventory):
                 if item == add_item:
                     self.inventory[i] = (item, amount+add_amount)
-                    print(f"Added {add_amount} {item}s to {self.firstname} {self.surname}")
+                    gl.print_debugg("DEBUGG", f"Added {add_amount} {item}s to {self.firstname} {self.surname}")
                     item_exists = True
                     break
             if not item_exists:
@@ -1015,6 +1038,7 @@ class Character():
         remove_list: list[tuple] = []
 
         #  Check for identical items
+        remove_level = 0
         if def_lvl == 0:
             for item in self.inventory:
                 name, amount = item
@@ -1043,15 +1067,15 @@ class Character():
                         if item_name == remove:
                             remove_name = item_name
                     else:
-                        remove_level = 0
-                        remove_name = item_name
+                        if item_name == remove:
+                            remove_level = 0
+                            remove_name = item_name
         else:
             remove_name = remove
             remove_level = def_lvl
         
         #  Remove Selected Item
-        for index, item in enumerate(self.inventory):
-            item_name, item_amount = item
+        for index, (item_name, item_amount) in list(enumerate(self.inventory)):
             if fs.is_type(item_name, tuple):
                 item_name, item_level = item_name
                 if len(remove_list) == 1:
@@ -1060,20 +1084,20 @@ class Character():
                 self.weight -= w_item.weight
                 if item_name == remove_name and item_level == remove_level:
                     if item_amount > 1 and not item_amount == remove_amount:
-                        print(f"Removed {remove_amount} {self.inventory[index]}")
+                        gl.print_debugg("DEBUGG", f"Removed {remove_amount} {self.inventory[index]}")
                         self.inventory[index] = ((item_name, item_level), item_amount-remove_amount)
                     else:
-                        print(f"Removed {self.inventory[index]}")
+                        gl.print_debugg("DEBUGG", f"Removed {self.inventory[index]}")
                         del self.inventory[index]
             else:
                 if item_name == remove_name:
                     w_item = it.item_list(item_name, 2)
                     self.weight -= w_item.weight
                     if item_amount > 1 and not item_amount == remove_amount:
-                        print(f"Removed {remove_amount} {self.inventory[index]}")
+                        gl.print_debugg("DEBUGG", f"Removed {remove_amount} {self.inventory[index]}")
                         self.inventory[index] = (item_name, item_amount-remove_amount)
                     else:
-                        print(f"Removed {self.inventory[index]}")
+                        gl.print_debugg("DEBUGG", f"Removed {self.inventory[index]}")
                         del self.inventory[index]
         remove_list.clear()
 
@@ -1119,10 +1143,18 @@ class Character():
                         return spell.spell
 
     def status_apply(self, effect: object, spell_effect: int):
+        for current_effect in self.status_effects:
+            if current_effect.name == effect.name:
+                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Replacing Status Effect")
+                self.status_effects.remove(current_effect)
+
         if effect.is_effect:
             effect.spell_effect=spell_effect
             if effect.activate_unique:
-                effect.init()
+                if effect.init_package:
+                    effect.init(effect.init_package)
+                else:
+                    effect.init()
         effect.apply_bonus(self)
         self.new_hp += effect.new_hp
         self.new_mp += effect.new_mp
@@ -1171,32 +1203,47 @@ class Character():
             self.max_persuasion += effect.new_persuasion
             self.max_performance += effect.new_performance
             self.max_karma += effect.new_karma
+        self.status_effects.append(effect)
+
+    def status_remove(self, effect: str):
+        for i, status_effect in enumerate(self.status_effects):
+            if gl.uncapitalize_string(status_effect.name, " ") != effect:
+                continue
+            self.status_effects.pop(i)
+            break
 
     def attribute_add(self, attribute: str, effect: int, do_print: bool = False, spell: object = None):
         """Use this to ensure no heal/effect exceeds MAX of an attribute"""
         new_attrib: int = getattr(self, f"new_{attribute}")
         max_attrib: int = getattr(self, f"max_{attribute}")
         reverse = False
-        if new_attrib+effect > max_attrib:
-            updated_attrib = max_attrib
-        else:
-            new_attrib += effect
-            updated_attrib = new_attrib
+        tagged = None
         
         if spell is not None:
             if spell.heal_tag:
-                tagged = None
                 for tag in spell.heal_tag:
                     if tag == "alive":
                         tagged = tag
                     elif tag == "undead":
                         tagged = tag
                 character_tag = self.race_type[1]
-                if character_tag != tagged:
+                if character_tag != tagged and effect >= 0:
                     reverse = True
         
-        if reverse:
-            updated_attrib = -updated_attrib
+        if self.status_effects:
+            for status in self.status_effects:
+                if status.name in ["Decay"] and self.race_type[1] == "alive":
+                    reverse = not reverse
+        
+        if reverse and tagged is not None:
+            effect = -effect
+
+        if new_attrib+effect > max_attrib:
+            updated_attrib = max_attrib
+        else:
+            new_attrib += effect
+            updated_attrib = new_attrib
+            
 
         setattr(self, f"new_{attribute}", updated_attrib)
         if do_print:
@@ -1226,6 +1273,7 @@ class Character():
 def character_list(key: str = None, race_class: list[tuple[str, int]] = None, job_class: list[tuple[str, int]] = None) -> list[str, object]:
     has_dependencies: list[str] = ["5001"]
     chara_dic = {
+        "1000": Character(1000, "Skeleton", "", ["Mana"], -200, None, race_class, job_class, character_type="monster"),
         "5001": Character(5001, "Beacon", "of The Fox", ["Light"], 0, None, race_class, job_class, character_type="summon")
     }
     if key is not None:

@@ -1,4 +1,5 @@
 from colorama import Fore, Style, init
+from typing import Iterable, Any
 import racial_classes as rc
 import job_classes as jc
 import character as ch
@@ -25,6 +26,26 @@ def is_type(input, type: type) -> bool:
         return True
     else:
         return False
+    
+def is_player_prefix(prefix_list: dict, prefix: str = None, extra_text: str = "") -> object:
+    while True:
+        if prefix is None:
+            prefix = input(f"Player prefix{extra_text}: ").upper().strip()
+        player: object = prefix_list.get(prefix)
+        if player is not None:
+            break
+        prefix = None
+    return player
+    
+def is_in_iterable(question: str, iterable: Iterable) -> Any:
+    """
+    Checks if an item exists in an iterable
+    """
+    while True:
+        inputted = input(question)
+        if inputted in iterable:
+            break
+    return inputted
     
 def is_max(character: object, attribute: str, effect: int, mode: str = "d") -> list[int, int]: # Effect value, excession
     """Checks if the effect will exceed, if it does, will cap to 100,

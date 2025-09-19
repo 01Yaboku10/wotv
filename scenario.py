@@ -12,6 +12,7 @@ import manu as menu
 import sound as sd
 import obstacle as ob
 import flooreffect as fe
+import item as it
 
 init(autoreset=True)
 
@@ -151,9 +152,13 @@ class Game():
             player_effects = player.status_effects[:]
             for effect in player_effects:
                 if effect.ept:
-                    print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Player {player.prefix} {player.firstname} took {round(effect.effect)} damage/heal from {effect.name}")
-                    # player.new_hp += round(effect.effect)
-                    player.attribute_add("hp", round(effect.effect), False, effect)
+                    for target in effect.ept_target:
+                        print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Player {player.prefix} {player.firstname} took {round(effect.effect)} to {target} from {effect.name}")
+                        # player.new_hp += round(effect.effect)
+                        player.attribute_add(target, round(effect.effect), False, effect)
+                if effect.activate_unique:
+                    if hasattr(effect, "update") and callable(getattr(effect, "update")):
+                        effect.update()
                 if effect.time_left <= 0:
                     effect.remove(player)
                     player.status_effects.remove(effect)
@@ -227,7 +232,7 @@ class Game():
             if set_player in self.player_prefixes:
                 while True:
                     player = self.player_prefixes[set_player]
-                    player.print_eq()
+                    print(f"{player:equipment}")
                     choice = input("[A]dd, [R]emove, [U]se, [E]quip, [T]ransfer, [G]old, [D]one: ").upper()
                     if choice == "A":
                         player.equipment_add()
@@ -441,7 +446,7 @@ class Game():
     def action(self, player: object):
         print("---------=Action Menu=---------")
         while True:
-            choice = input("Cast [M]agic, [A]bility, [S]ummon, [C]ontrol Spirit: ").upper()
+            choice = input("Cast [M]agic, [A]bility, [S]ummon, [C]ontrol Spirit, [CR]aft, [D]one: ").upper()
             if choice == "M":
                 self.spell_action(player)
                 break
@@ -464,6 +469,11 @@ class Game():
                 break
             elif choice == "C":
                 self.spirit_control(player)
+                break
+            elif choice == "CR":
+                self.craft_menu(player)
+                break
+            elif choice == "D":
                 break
     
     def ability_action(self, player: object) -> None:
@@ -730,9 +740,11 @@ class Game():
                     unique: str = "damage"
 
                 #  CHECK FOR UNIQUE EFFECT (OPPONENT)
+                spell_dmg_multi: float = 1
                 if oppon.status_effects:
                     new_oppon = None
                     for s_effect in oppon.status_effects:
+                        spell_dmg_multi += s_effect.effect_multiplier
                         if "attacked" in s_effect.activate_unique:
                             unique = s_effect.attacked(player, oppon, self)  # -> "damage" or "spell"
                             if not fs.is_type(unique, str):
@@ -773,7 +785,7 @@ class Game():
                     if take_damage:
                         if spell.type not in ["Buff", "Barrier"]:
                             effect = self.calc_effect(dice, spell, opponent_multiplier, penetrate, pierce, caster_multiplier, affinity, maximize, save_reduction, extra_dmg)
-                            
+                            effect *= spell_dmg_multi
                             # Check for damage immunities
                             immune: bool = False
                             if oppon.status_effects:
@@ -857,8 +869,8 @@ class Game():
                         if spell.type not in ["Buff", "Barrier", "Debuff"]:
                             print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} Dealt {round(effect)} damage/heal to Player {oppon.prefix} {oppon.firstname}")
                         print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {oppon.prefix} {oppon.firstname} now has {oppon.new_hp}/{oppon.max_hp} HP")
-                        if oppon.prefix != player.prefix:
-                            sl.update_sheet(oppon)
+                        #if oppon.prefix != player.prefix:
+                            #sl.update_sheet(oppon)
 
                         #  BARRIER APPLY
                         if spell.type == "Barrier":
@@ -942,6 +954,7 @@ class Game():
 
             for opponent in opponent_list:
                 opponent.save = 1 # Reset all saves
+                sl.update_sheet(opponent)
             opponent_list.clear()
             self.spell_enchantments.clear()
             self.power_check(player)
@@ -1031,6 +1044,8 @@ class Game():
         #    return
         if save_reduction == 0:
             return
+        if not status_effect.is_active:
+            return
         if status_effect.ept and status_effect.is_effect and not status_effect.applied:
             status_effect.effect *= abs(round(effect))
         if self.extend == 1.5 and not status_effect.applied:
@@ -1038,16 +1053,11 @@ class Game():
             status_effect.time = round(status_effect.time)
         if mode != "d":
             if spell.type in ["Debuff"]:
-                print(f"Effect[{effect}] vs Resistance[{opponent.new_resistance}]")
-                if effect < opponent.new_resistance:
+                print(f"Effect[{effect}] vs Resistance[{opponent.new_resistance*(1+(opponent.save-10)*0.01)}]")
+                if effect < opponent.new_resistance*(1+(opponent.save-10)*0.01):
                     print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {opponent.prefix} {opponent.firstname} resisted {status_effect.name}")
                     return
-        for current_effect in opponent.status_effects:
-            if current_effect.name == status_effect.name:
-                print(f"{Fore.GREEN}[DEBUGG]{Style.RESET_ALL} Replacing Status Effect")
-                opponent.status_effects.remove(current_effect)
         opponent.status_apply(status_effect, effect)
-        opponent.status_effects.append(status_effect)
         print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {opponent.prefix} {opponent.firstname} has recieved {status_effect.name} for {status_effect.time} turns")
         status_effect.applied = True
 
@@ -1081,6 +1091,11 @@ class Game():
                 if remove:
                     for effect in remove:
                         opponent.status_effects.remove(effect)
+
+            # Update effect_mulitpier
+            if sent_status_effect.is_effect:
+                sent_status_effect.effect_multiplier *= effect
+                print(f"Multiplier set to: {sent_status_effect.effect_multiplier}")
 
             self.status_effect_apply(sent_status_effect, opponent, save_reduction, effect, mode, spell)
         
@@ -1308,7 +1323,7 @@ class Game():
                               f"INV:{player.new_investigation}/{player.max_investigation}, PER:{player.new_perception}/{player.max_perception}\n"
                               f"DEC:{player.new_deception}/{player.max_deception}, INTI:{player.new_intimidation}/{player.max_intimidation}\n"
                               f"PERS:{player.new_persuasion}/{player.max_persuasion}, PERF:{player.new_performance}/{player.max_performance}")
-                        player.print_eq()
+                        print(f"{player:equipment}")
         elif choice == "Q":
             while True:
                 choice = input("Would you like to save a character? [Y/N]: ").upper()
@@ -1423,6 +1438,101 @@ class Game():
                 break
         self.initiative_list.sort(key=lambda x: x.initiative, reverse=True)
 
+    def craft_menu(self, player: object):
+        while True:
+            gl.print_menu("Craft Menu")
+            choice = input("[C]raft, [S]earch, [D]one: ").upper()
+            if choice == "C":
+                while True:
+                    item = input("Craft item: ").lower().strip()
+                    if fs.is_item(item):
+                        break
+                amount = fs.is_int(input("Craft amount: ").strip())
+                self.craft_craft(player, item, amount)
+            elif choice == "S":
+                while True:
+                    search: str = input("Search recipe for item: ")
+                    if it.item_list(search, 2) is not None:
+                        break
+                self.craft_search(search)
+            elif choice == "D":
+                break
+    
+    def craft_craft(self, player: object, craft_item: str, craft_amount: int):
+        """
+        Crafts X amount of an item if the player has the required ingredients on hand.
+        """
+        ingredients: list[tuple[str, int]] = it.item_list(craft_item, 2).ingredients
+        missing: list[tuple[str, int, int]] = [] # name, has_amount, req_amount
+        available: list[tuple[str, int]] = [] # name, amount
+
+        # Check if player has ingredients
+        for ingredient in ingredients:
+            ing_name, ing_amount = ingredient
+            if not player.inventory:
+                missing.append((ing_name, 0, ing_amount*craft_amount))
+            for item in player.inventory:
+                item_name, item_amount = item
+                if fs.is_type(item_name, tuple):
+                    continue
+                if item_name != ing_name:
+                    continue
+                if ing_amount*craft_amount > item_amount:
+                    missing.append((ing_name, ing_amount*craft_amount-item_amount, ing_amount*craft_amount))
+                else:
+                    available.append((ing_name, item_amount))
+        
+        # Check if player has all required ingredients
+        if missing:
+            for miss in missing:
+                gl.print_debugg("ERROR", f"{player.firstname} is missing {gl.capitalize_string(miss[0], '_')}. Has {miss[1]}/{miss[2]}")
+            return
+        
+        # Check if player has all equipment
+        has_equipment: bool = True
+        for equip in it.item_list(craft_item, 2).equipment:
+            has_equip: bool = False
+            for inv_item in player.inventory:
+                if fs.is_type(inv_item[0], tuple):
+                    continue
+                if inv_item[0] == equip[0] and inv_item[1] >= equip[1]:
+                    has_equip = True
+            if not has_equip:
+                has_equipment = False
+                gl.print_debugg("ERROR", f"{player.firstname} is missing {equip[1]} {gl.capitalize_string(equip[0], '_')}.")
+        if not has_equipment:
+            return
+
+        # Determine level
+        alchemy: int = 0  # Alchemy Score
+        for job in player.job_classes:
+            if job[0] in ["alchemist", "greater_alchemist"]:
+                alchemy += job[1]
+        add_level: int = min(5, 1 + alchemy // 10)
+
+        # Add crafted item
+        player.inventory_add((craft_item, add_level), craft_amount)
+
+        # Remove ingredients
+        for ing in ingredients:
+            ing_name, ing_amount = ing
+            player.inventory_remove(ing_name, ing_amount*craft_amount)
+        
+        gl.print_debugg("NOTE", f"{craft_amount} {craft_item} crafted!")
+        sl.update_sheet(player)
+
+    def craft_search(self, item: str):
+        """
+        Displays the reciepe for a craftable item
+        """
+        item_obj: object = it.item_list(item, 2)
+        if not item_obj:
+            gl.print_debugg("ERROR", f"Item '{item}' has no recipe.")
+            return
+        gl.print_menu(gl.capitalize_string(f"Recipe for {item}", "_"))
+        for ing in item_obj.ingredients:
+            print(f"{ing[1]} {ing[0]}")
+
 class Scenario():
     def __init__(self, name: str, turn: int = 1, players: list[object] = None, playerturn: int = 0, mode = "Adventure", obstacles: dict = None, floor: dict = None, chests: dict[str, list[list[str, int, int]]] = None):
         self.name = name
@@ -1433,10 +1543,19 @@ class Scenario():
         self.obstacles = obstacles if obstacles is not None else {}
         self.floor = floor if floor is not None else {}
         self.chests = chests if chests is not None else {}
+        self.player_prefixes = {}
+        self.update_dict()
 
     def update_players(self, players):
         self.players.clear()
         self.players = players
+        self.update_dict()
+    
+    def update_dict(self):
+        if not self.players:
+            return
+        for player in self.players:
+            self.player_prefixes[player.prefix] = player
 
     def chest_create(self):
         """
@@ -1493,10 +1612,22 @@ class Scenario():
         self.chests[bag] = chest
         gl.print_debugg("DEBUGG", f"{item_amount} {item_name} added to {bag}")
 
-    def chest_remove(self, bag: str, remove: str, amount: int, level: int = 0):
+    def chest_remove(self, bag: str, remove: str = None, amount: int = 0, level: int = 0, mode: str = "d"):
         """Will remove an item from a chest. If there are two items with the same name but different levels,
         the user will be asked which one to remove. Note that you can use the 'level' parameter if you want
         to skip the 'choose' which item part."""
+        if mode == "d":
+            found = False
+            while not found:
+                remove = input("Remove item: ").lower().strip()
+                found = self.chest_search(bag, remove)
+            amount: int = fs.is_int(input("Remove item amount: "))
+            level = input("Remove level [Leave blank if none]: ")
+            if level != "":
+                level = fs.is_int(level)
+            else:
+                level = 0
+        
         remove_item: list[int] = []  # List of index where item is found
         bag_iter: list = self.chests.get(bag)
         if bag_iter is None:
@@ -1506,6 +1637,7 @@ class Scenario():
             item_name, item_level, item_amount = item
             if item_name == remove:
                 remove_item.append(index)
+                gl.print_debugg("DEBUGG", "Found item...")
                 if level != 0 and level == item_level:
                     break
         if len(remove_item) > 1:
@@ -1530,6 +1662,10 @@ class Scenario():
             del self.chests[bag][removed]
         else:
             gl.print_debugg("ERROR", "Tried to remove more items than what exists in the chest...")
+
+        if not self.chests[bag]:
+            del self.chests[bag]
+            gl.print_debugg("DEBUGG", f"Removed the container '{bag}' since it was empty.")
 
     def chest_search(self, chest: str, item_name: str) -> bool:
         """Will search a chest and return a bool if the item is found"""
@@ -1561,17 +1697,7 @@ class Scenario():
                 item_amount = fs.is_int(input("Item amount: "))
                 self.chest_add(chest, item_name, item_level, item_amount)
             elif choice == "R":
-                found = False
-                while not found:
-                    item_name = input("Remove item: ").lower().strip()
-                    found = self.chest_search(chest, item_name)
-                item_amount = fs.is_int(input("Remove item amount: "))
-                item_level = input("Remove level [Leave blank if none]: ")
-                if item_level != "":
-                    item_level = fs.is_int(item_level)
-                else:
-                    item_level = 0
-                self.chest_remove(chest, item_name, item_amount, item_level)
+                self.chest_remove(chest)
             elif choice == "E":
                 while True:
                     edit = fs.is_int(input("Edit item with index: "))
@@ -1597,12 +1723,136 @@ class Scenario():
             if choice in ["A", "R", "E", "D"]:
                 break
 
-    def chest_open(self):
+    def chest_open(self, chest: str):
         """
+        chest: str; key to the chest to be opened
+
         Opens a chest where items can be added and/or removed to players
         -> Choose which chest to open -> Menu to deposit/take items -> deposit/take to player (note: Remember custom amount if amount > 1)
         """
-        pass
+        container: list[list] = self.chests.get(chest)
+        if container is None:
+            gl.print_debugg("ERROR", f"'{container}' could not be found and therefore cannot be opened.")
+            return
+        self.chest_disp(chest)
+        while True:
+            choice = input("[T]ake, [D]eposit, [C]ontinue: ").upper().strip()
+            if choice == "T":
+                while True:
+                    if not container:
+                        break
+                    while True:
+                        self.chest_disp(chest)
+                        take: int = input("Take item with index, [A]ll, [D]one: ").upper().strip()
+                        if take in ["D", "A"]:
+                            break
+                        take = fs.is_int(take)
+                        if 0 <= take-1 <= len(container):
+                            break
+                    if take == "D":
+                        break
+                    while True:
+                        player_id: str = input("Give to player with Prefix ID: ").upper().strip()
+                        if player_id in self.player_prefixes:
+                            break
+                    player: object = self.player_prefixes.get(player_id)
+                    if take == "A":
+                        for _ in range(len(container)):
+                            self.chest_transfer(container, 1, chest, "take", player, True)
+                    else:
+                        self.chest_transfer(container, take, chest, "take", player)
+            elif choice == "D":
+                while True:
+                    player_id: str = input("Deposit item from player with Prefix ID: ").upper().strip()
+                    if player_id in self.player_prefixes:
+                        break
+                player: object = self.player_prefixes.get(player_id)
+                while True:
+                    if not player.inventory:
+                        break
+                    print(f"{player:inventory}")
+                    while True:
+                        deposit = input("Deposit item with index, [A]ll, [D]one: ").upper().strip()
+                        if deposit in ["D", "A"]:
+                            break
+                        deposit = fs.is_int(deposit)
+                        if 0 <= deposit-1 <= len(player.inventory):
+                            break
+                    if deposit == "D":
+                        break
+                    if deposit == "A":
+                        inv_range: int = len(player.inventory)
+                        for _ in range(inv_range):
+                            self.chest_transfer(container, 1, chest, "deposit", player, True)
+                    else:
+                        self.chest_transfer(container, deposit, chest, "deposit", player)
+            elif choice == "C":
+                break
+
+    def chest_transfer(self, container: list[list], item_index: int, chest: str, mode: str, player: object = None, all: bool = False):
+        """
+        Takes or deposits items from a container/chest
+        """
+        if mode == "take":
+            amount: int = 1
+            amount_bypass = True if container[item_index-1][2] == 1 else False
+            amount_bypass = True if all else amount_bypass
+            if not amount_bypass:
+                while True:
+                    amount = fs.is_int(input("Take amount: "))
+                    if amount == container[item_index-1][2]:
+                        amount_bypass: bool = True
+                        break
+                    elif amount < container[item_index-1][2]:
+                        break
+                    else:
+                        continue
+            if amount_bypass:
+                item: list = container.pop(item_index-1)
+                amount: int = item[2]
+            else:
+                item: list = container[item_index-1]
+                container[item_index-1][2] -= amount
+            self.chests[chest] = container
+            
+            update: bool = True if len(self.chests[chest]) <= 0 and all else False
+            item_obj = it.item_list(item[0], item[1])
+            is_equipment = True if item_obj.type == "equipment" else False
+            if is_equipment:
+                if amount > 1:
+                    for i in range(amount):
+                        player.equipment_add(item[0], item[1], 1, update)
+                else:
+                    player.equipment_add(item[0], item[1], amount, update)
+            else:
+                player.equipment_add(item[0], item[1], amount, update)
+        elif mode == "deposit":
+            item, amount = player.inventory[item_index-1] # Note that the item CAN be a string or a tuple
+            if fs.is_type(item, tuple):
+                item_name, item_level = item
+            else:
+                item_name = item
+                item_level = 2
+            if not all:
+                if amount != 1:
+                    while True:
+                        item_amount = fs.is_int(input("Choose amount: "))
+                        if amount <= item_amount:
+                            break
+                else:
+                    item_amount = amount
+            else:
+                item_amount = amount
+            self.chest_add(chest, item_name, item_level, item_amount)
+            player.equipment_reset()
+            player.inventory_remove(item_name, item_amount, item_level)
+            if len(player.inventory) == 0:
+                player.equipment_check()
+            else:
+                player.equipment_check(False)
+
+            if not all:
+                self.chest_disp(chest)
 
     def chest_disp(self, chest: str):
         """
@@ -1622,7 +1872,7 @@ class Scenario():
                 return
             gl.print_menu(gl.capitalize_string(chest, "_"))
             for index, item in enumerate(self.chests.get(chest)):
-                print(f"[{index+1}] name: {item[0]}: level: {item[1]}, amount: {item[2]}")
+                print(f"[{index+1}] Name: {item[0]}, Level: {item[1]}, Amount: {item[2]}")
     
     def chest_change(self, chest: str, mode: str, value: int, item: int):
         """
@@ -1649,15 +1899,29 @@ class Scenario():
         """
         A menu from where you can choose to Create, Add, Remove, Edit, Open and Display containers.
         """
-        gl.print_menu("Chest Menu")
         while True:
+            gl.print_menu("Chest Menu")
             choice = input("[C]reate, [A]dd, [R]emove, [E]dit, [O]pen, [D]isplay, [Q]uit: ").upper().strip()
             if choice == "C":
                 self.chest_create()
             elif choice == "A":
-                pass
+                if not self.chests:
+                    gl.print_debugg("ERROR", "No containers are registered.")
+                    continue
+                chest = fs.is_in_iterable("Add to container: ", self.chests)
+                while True:
+                    item = it.item_list(input("Add item: "), 2)
+                    if item is not None:
+                        break
+                item_level = fs.is_int(input("Item level: "))
+                amount = fs.is_int(input("Item amount: "))
+                self.chest_add(chest, gl.uncapitalize_string(item.name, " "), item_level, amount)
             elif choice == "R":
-                pass
+                if not self.chests:
+                    gl.print_debugg("ERROR", "No containers are registered.")
+                    continue
+                chest = fs.is_in_iterable("Remove from container: ", self.chests)
+                self.chest_remove(chest)
             elif choice == "E":
                 self.chest_disp("all")
                 while True:
@@ -1667,7 +1931,8 @@ class Scenario():
                 self.chest_edit(chest)
                 self.chest_disp(chest)
             elif choice == "O":
-                self.chest_open()
+                chest = fs.is_in_iterable("Open container with name: ", self.chests)
+                self.chest_open(chest)
             elif choice == "D":
                 bag = input("Display bag: ").lower()
                 self.chest_disp(bag)

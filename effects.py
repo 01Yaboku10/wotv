@@ -1,5 +1,6 @@
 import failsafe as fs
 import gamelogic as gl
+from typing import Any
 from colorama import Fore, Style, init
 init(autoreset=True)
 
@@ -46,7 +47,10 @@ class Effect():
                  c_effect_m: int = 0,
                  immunities: list[str] = None,
                  effect_type: str = "spell",
-                 heal_tag: list[str] = None
+                 heal_tag: list[str] = None,
+                 ept_target: list[str] = None,
+                 effect_multiplier: float = 0,
+                 init_package: list = None
                  ):
         self.name = name
         self.time = time
@@ -111,10 +115,13 @@ class Effect():
         self.save = save
         self.activate_unique = activate_unique if activate_unique is not None else []
         self.c_effect_m = c_effect_m
-        self.immunities = immunities
+        self.immunities = immunities if immunities is not None else []
         self.effect_type = effect_type
         self.heal_tag = heal_tag if heal_tag is not None else []
         self.applied = False
+        self.ept_target = ept_target if ept_target is not None else []
+        self.effect_multiplier = effect_multiplier  # Used as a multiplier for damage/heal
+        self.init_package = init_package  # Used for init functions requiring inputs
 
         if self.spell_effect != 0 and self.ept and self.is_effect:
             self.effect = self.effect * abs(self.spell_effect)
@@ -220,7 +227,7 @@ class Effect():
                 else:
                     self.new_karma = round(self.karma*(p.max_karma if self.affect_max else self.bonus))
             else:
-                new_val = round(getattr(self, attr)*(getattr(self, f"max_{attr}") if self.affect_max else self.bonus))
+                new_val = round(getattr(self, attr)*(getattr(p, f"max_{attr}") if self.affect_max else self.bonus))
                 effect, excession = fs.is_max(p, attr, new_val)
                 effect = effect-excession  # If the spell will exceed level 100, it will reduce the potency to below 100
                 setattr(self, f"new_{attr}", effect)
@@ -280,15 +287,50 @@ class Effect_SoulLink(Effect):
             return redirect
         else:
             return "damage"
+        
+class Effect_RootweaversGrasp(Effect):
+    def init(self, package: list[Any]):
+        self.ally, self.opponent, self.self_ref, self.players = package
+        if self.opponent is not None and self.self_ref == "oppo":
+            self.opponent.status_apply(effect_list("encumbered", 3, 1), 1)
+        if self.ally is not None and self.self_ref == "ally":
+            self.ally.status_apply(effect_list("encumbered", 3, 1), 1)
+    
+    def update(self):
+        if self.ally is not None and self.self_ref == "ally":
+            self.ally.attribute_add("hp", -round(self.effect), True, self)
+            print(-self.effect)
+        if self.opponent is not None and self.self_ref == "oppo":
+            self.opponent.attribute_add("hp", round(self.effect), True, self)
+            print(self.effect)
 
-def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False, use_religion: str = None, affect_max: bool = False, spell_effect: int = 0, ceff: int = 0, heal_tag: list[str] = None):
-    error: bool = False
+    def attacked_after(self, player: object):
+        if self.opponent is not None and self.self_ref == "oppo":
+            if self.opponent.new_hp > 0:
+                return
+            self.remove(self.ally)
+            self.remove(self.opponent)
+            self.ally.status_remove("rootweavers_grasp")
+            self.opponent.status_remove("rootweavers_grasp")
+            players: list = []
+            while True:
+                player = input("Give rootweavers gift to player with Prefix, [D]one: ").upper().strip()
+                if player == "D":
+                    break
+                players.append(fs.is_player_prefix(self.players, player))
+            for player in players:
+                player.status_apply(effect_list("rootweavers_gift", 3, 1), 6)
+
+def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = False, use_religion: str = None, affect_max: bool = False, spell_effect: int = 0, ceff: int = 0, heal_tag: list[str] = None, package: list[Any] = None):
     heal_tag = heal_tag if heal_tag is not None else []
+    package = package if package is not None else []
     effects_list = {
         "error": Effect("Error", 1, 1, 1),
         # Spell Effects
-        "ignite": Effect("Ignite", time=tim, time_left=tim, ept=True, effect=-0.2, success=succ, is_effect=use_effect, spell_effect=spell_effect, effect_type="debuff"),
+        "ignite": Effect("Ignite", time=tim, time_left=tim, ept=True, effect=-0.2, success=succ, is_effect=use_effect, spell_effect=spell_effect, effect_type="debuff", ept_target=["hp"]),
         "corrosion": Effect("Corrosion", time=tim, time_left=tim, phydef=-1, is_effect=True, success=succ, effect_type="debuff"),
+        "poisoned": Effect("Poisoned", time=tim, time_left=tim, success=succ, ept=True, effect=-0.05, is_effect=use_effect, spell_effect=spell_effect, effect_type="debuff", ept_target=["hp"], heal_tag=heal_tag),
+        "bleeding": Effect("Bleeding", time=tim, time_left=tim, success=succ, ept=True, effect=-0.2, is_effect=use_effect, spell_effect=spell_effect, effect_type="debuff", ept_target=["hp"]),
         "shock": Effect("Shock", time=tim, time_left=tim, perception=-0.3, agility=-0.5, is_effect=use_effect, success=succ, affect_max=affect_max, effect_type="debuff"),
         "stun": Effect("Stun", time=tim, time_left=tim, acrobatics=-100, agility=-100, success=succ, effect_type="debuff"),
         "increase_all_stats": Effect("Increase All Stats", time=tim, time_left=tim, religion=use_religion, success=succ, is_effect=True, is_max=True, c_effect_m=ceff, effect=1, hp=1, sp=1, mp=1, phyatk=1, phydef=1, agility=1, finess=1, magatk=1, magdef=1, resistance=1, special=1),
@@ -303,13 +345,13 @@ def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = Fals
         "cleansing_light": Effect("Cleansing Light", time=tim, time_left=tim, success=succ),
         "vulpine_mirror": Effect_VulpineMirror("Vulpine Mirror", time=tim, time_left=tim, success=succ, is_effect=True, activate_unique=["attacked"]),
         "halo_of_the_tamer": Effect("Halo of The Tamer", time=tim, time_left=tim, success=succ),
-        "sanctified_ground": Effect("Sanctified Ground", time=tim, time_left=tim, success=succ, ept=True, effect=1, is_effect=True, heal_tag=heal_tag),
-        "sanctified_ground_floor": Effect("Sanctified Ground Floor", time=tim, time_left=tim, success=succ, ept=True, effect=spell_effect, is_effect=True, heal_tag=heal_tag),
+        "sanctified_ground": Effect("Sanctified Ground", time=tim, time_left=tim, success=succ, ept=True, effect=1, is_effect=True, heal_tag=heal_tag, ept_target=["hp"]),
+        "sanctified_ground_floor": Effect("Sanctified Ground Floor", time=tim, time_left=tim, success=succ, ept=True, effect=spell_effect, is_effect=True, heal_tag=heal_tag, ept_target=["hp"]),
         "astral_tailwind": Effect("Astral Tailwind", time=tim, time_left=tim, success=succ),
         "soul_link": Effect_SoulLink("Soul Link", time=tim, time_left=tim, success=succ, activate_unique=["attacked"]),
         "suppressed": Effect("Suppresed", time=tim, time_left=tim, success=succ, effect_type="debuff"),
         "silenced": Effect("Suppresed", time=tim, time_left=tim, success=succ, effect_type="debuff"),
-        "solar_cage": Effect("Solar Cage", time=tim, time_left=tim, success=succ, ept=True, effect=-10, effect_type="debuff"),
+        "solar_cage": Effect("Solar Cage", time=tim, time_left=tim, success=succ, ept=True, effect=-10, effect_type="debuff", ept_target=["hp"]),
         "encumbered": Effect("Encumbered", time=tim, time_left=tim, success=succ, effect_type="debuff"),
         "luminous_rebirth": Effect("Luminous Rebirth", time=tim, time_left=tim, success=succ),
         "fox_of_the_zenith": Effect("Fox of The Zenith", time=tim, time_left=tim, success=succ),
@@ -317,7 +359,18 @@ def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = Fals
         "light_eternal": Effect_LightEternal("Light Eternal", time=tim, time_left=tim, success=succ, activate_unique=["attacked_after"]),
         "spirit_ascendant": Effect("Spirit Ascendant", time=tim, time_left=tim, success=succ),
         "flight": Effect("Flight", time=tim, time_left=tim, success=succ),
-        
+        "chilled": Effect("Chilled", time=tim, time_left=tim, success=succ),
+        "decay": Effect("Decay", time=tim, time_left=tim, success=succ),
+        "photosynthesis": Effect("Photosynthesis", time=tim, time_left=tim, success=succ, ept=True, is_effect=use_effect, effect=1, spell_effect=spell_effect, ept_target=["mp"]),
+        "fleshrot_vine": Effect("Fleshrot Vine", time=tim, time_left=tim, success=succ, ept=True, ept_target=["sp"], effect=-3),
+        "barkskin_curse": Effect("Barkskin Curse", time=tim, time_left=tim, success=succ, effect_multiplier=0.005, is_effect=use_effect),
+        "circle_of_renewal": Effect("Circle of Renewal", time=tim, time_left=tim, success=succ, ept=True, is_effect=use_effect, effect=spell_effect, ept_target=["mp", "hp"]),
+        "rootweavers_grasp": Effect_RootweaversGrasp("Rootweavers Grasp", time=tim, time_left=tim, success=succ, activate_unique=["attacked_after"], init_package=package, is_effect=True, effect=spell_effect*(-0.1), heal_tag=["alive"]),
+        "rootweavers_gift": Effect("Rootweavers Gift", time=tim, time_left=tim, success=succ, ept=True, effect=3, ept_target=["mp", "sp", "hp"]),
+        "wet": Effect("Wet", time=tim, time_left=tim, success=succ),
+        "luminous_light": Effect("Luminous Light", time=tim, time_left=tim, success=succ),
+        "bunny_tail": Effect("Bunny Tail", tim, tim, succ),
+
         # Immunites
         "charm_immunity": Effect("Charm Immunity", time=tim, time_left=tim, success=succ, immunities=["charm"]),
         "slow_immunity": Effect("Slow Immunity", time=tim, time_left=tim, success=succ, immunities=["slow"]),
@@ -331,12 +384,9 @@ def effect_list(effect_name: str, tim: int, succ: float, use_effect: bool = Fals
         "strength": Effect("Strength", time=tim, time_left=tim, success=succ, phyatk=25, athletics=10, resistance=-10),
         "swiftness": Effect("Swiftness", time=tim, time_left=tim, success=succ, agility=25, acrobatics=10, resistance=-10)
     }
-    try:
-        effect = effects_list[effect_name]
-    except KeyError:
-        gl.print_debugg("ERROR", f"The effect '{effect_name}' could not be found...")
-        error = True
-    if error:
-        return effects_list["error"]
-    else:
-        return effect
+
+    effect = effects_list.get(effect_name)
+    if effect is None:
+        gl.print_debugg("error", f"Effect with name '{effect_name}' could not be found")
+        effect = effects_list.get("error")
+    return effect

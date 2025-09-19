@@ -1,7 +1,10 @@
 import os
 from colorama import Fore, Style, init
 import character as ch
+from character import Character
 import failsafe as fs
+from spell import Spell
+from scenario import Game
 import random
 import copy
 
@@ -47,6 +50,13 @@ def uncapitalize_string(string: str, splitter: str) -> str:
         return new_string.removesuffix("_")
     else:
         return None
+
+def is_resist(spell: Spell, opponent: Character, effect: int) -> bool:
+    print(f"Effect[{effect}] vs Resistance[{opponent.new_resistance*(1+(opponent.save-10)*0.01)}]")
+    if effect < opponent.new_resistance*(1+(opponent.save-10)*0.01):
+        print(f"{Fore.BLUE}[NOTE]{Style.RESET_ALL} {opponent.prefix} {opponent.firstname} resisted {spell.name}")
+        return True
+    return False
 
 def opponent_assign(players: list[object]) -> list[object]:
     opponents: list[object] = []
@@ -181,6 +191,7 @@ def magic_attribute_gen():
             Magic("Holy", 5),
             Magic("Space", 5),
             Magic("Dream", 5),
+            Magic("Catalysis", 5),
 
             #  Abstract elements (weight 1)
             Magic("Chaos", 1),

@@ -32,7 +32,10 @@ class Item():
                  intimidation: int = 0,
                  persuasion: int = 0,
                  performance: int = 0,
-                 slot: list[str] = None) -> None:
+                 slot: list[str] = None,
+                 ingredients: list[tuple[str, int]] = None, # Ingredients needed to craft the item (is consumed)
+                 equipment: list[tuple[str, int]] = None # Equipment needed to craft the item (is not consumed)
+                 ) -> None:
         level_name_list = {
             5: "Divine ",
             4: "Legendary ",
@@ -55,6 +58,8 @@ class Item():
         self.slot = slot if slot is not None else []
         self.armor_class = armor_class
         self.weight = weight
+        self.ingredients = ingredients if ingredients is not None else []
+        self.equipment = equipment if equipment is not None else []
         if send_obj:
             self.use_obj = self
         else:
@@ -92,7 +97,10 @@ class Item():
                 f"perception={self.perception}, deception={self.deception}, intimidation={self.intimidation}, "
                 f"persuasion={self.persuasion}, performance={self.performance})")
     
-def item_list(item_name: str, level: int):
+def item_list(item_name: str, level: int) -> object:
+    """
+    Contains all items. Returns an object of an item.
+    """
     items_list = {
         # Warrior
         "iron_helmet": Item("Iron Helmet", "equipment", level, "medium", 1.5, phydef=7, magdef=4, perception=3, stealth=-1, sleight=-1, slot=["h"]),
@@ -141,16 +149,52 @@ def item_list(item_name: str, level: int):
         "fireball_scroll": Item("Fireball Scroll", "scroll", 2, weight=0.5, spell="fireball"),
 
         # Potions
-        "mana_potion": Item("Potion of Mana", "consumable", level, weight=0.5, mp=25, status_effects=[ef.effect_list("anti-resistance", 3, 1)]),
-        "stamina_potion": Item("Potion of Stamina", "consumable", level, weight=0.5, sp=25, status_effects=[ef.effect_list("anti-resistance", 3, 1)]),
-        "strength_potion": Item("Potion of Strength", "consumable", level, weight=0.5, status_effects=[ef.effect_list("strength", 3, 1)]),
-        "swiftness_potion": Item("Potion of Swiftness", "consumable", level, weight=0.5, status_effects=[ef.effect_list("swiftness", 3, 1)]),
-        "healing_potion": Item("Healing Potion", "consumable", level, weight=0.5, hp=50, status_effects=[ef.effect_list("anti-resistance", 3, 1)]),
+        "mana_potion": Item("Potion of Mana", "consumable", level, weight=0.5, mp=25, status_effects=[ef.effect_list("anti-resistance", 3, 1)], ingredients=[("empty_bottle", 1), ("moonlance_petals", 6), ("essence_of_wraith_dust", 1), ("crystallized_mages_breath", 3), ("powdered_mindcap_mushroom", 2)], equipment=[("brewing_stand", 1)]),
+        "stamina_potion": Item("Potion of Stamina", "consumable", level, weight=0.5, sp=25, status_effects=[ef.effect_list("anti-resistance", 3, 1)], ingredients=[("empty_bottle", 1), ("red_ironroot", 1), ("griffon_heartstring", 8), ("dried_emberleaf", 4), ("troll_marrow_extract", 1)], equipment=[("brewing_stand", 1)]),
+        "strength_potion": Item("Potion of Strength", "consumable", level, weight=0.5, status_effects=[ef.effect_list("strength", 3, 1)], ingredients=[("empty_bottle", 1), ("gloodgrass_seeds", 10), ("crushed_rockscale_beetle_carapace", 1), ("wyvern_fang_powder", 1), ("hearts_ember_sap", 5)], equipment=[("brewing_stand", 1)]),
+        "swiftness_potion": Item("Potion of Swiftness", "consumable", level, weight=0.5, status_effects=[ef.effect_list("swiftness", 3, 1)], ingredients=[("empty_bottle", 1), ("silverwind_fern_fronds", 3), ("giant_spider_spinneret_silk", 1), ("nightglass_berry_juice", 7), ("dust_of_mothwing", 1)], equipment=[("brewing_stand", 1)]),
+        "healing_potion": Item("Healing Potion", "consumable", level, weight=0.5, hp=50, status_effects=[ef.effect_list("anti-resistance", 3, 1)], ingredients=[("empty_bottle", 1), ("sunblossom_nectar", 2), ("powdered_basilisk_bone", 1), ("essence_of_troll_fat", 3), ("greenheart_sap", 6)], equipment=[("brewing_stand", 1)]),
+
+        # General
+        "brewing_stand": Item("Brewing Stand", "item", 2, weight=3),
+        "empty_bottle": Item("empty_bottle", "item", 2, weight=0.5),
+        
+        # Ingredients
+        "alcohest": Item("Alcohest", "ingredient", 2, weight=0.1),
+        "arachas_venom": Item("Arachas Venom", "ingredient", 2, weight=0.1),
+        "arenaria": Item("Arenaria", "ingredient", 2, weight=0.1),
+        "balisse_fruit": Item("Balisse Fruit", "ingredient", 2, weight=0.1),
+        "bear_fat": Item("Bear Fat", "ingredient", 2, weight=0.1),
+        "berbercane_fruit": Item("Berbercane Fruit", "ingredient", 2, weight=0.1),
+        "blowball": Item("Blowball", "ingredient", 2, weight=0.1),
+        "bloodmoss": Item("Bloodmoss", "ingredient", 2, weight=0.1),
+        "alchemists_powder": Item("Alchemists Powder", "ingredient", 2, weight=0.1),
+        "buckthorn": Item("Buckthorn", "ingredient", 2, weight=0.02),
+        "moonlace_petals": Item("Moonlace Petals", "ingredient", 2, weight=0.02),
+        "essence_of_wraith_dust": Item("Essence of Wraith Dust", "ingredient", 2, weight=0.02),
+        "crystallized_mages_breath": Item("Crystallized Mages Breath", "ingredient", 2, weight=0.02),
+        "powdered_mindcap_mushroom": Item("Powdered Mindcap Mushroom", "ingredient", 2, weight=0.02),
+        "red_ironroot": Item("Red Ironroot", "ingredient", 2, weight=0.02),
+        "griffon_heartstring": Item("Griffon Heartstring", "ingredient", 2, weight=0.02),
+        "dried_emberleaf": Item("Dried Emberleaf", "ingredient", 2, weight=0.02),
+        "troll_marrow_extract": Item("Troll Marrow Extract", "ingredient", 2, weight=0.02),
+        "bloodgrass_seeds": Item("Bloodgrass Seeds", "ingredient", 2, weight=0.02),
+        "crushed_rockscale_beetle_carapace": Item("Crushed Rockscale Beetle Carapace", "ingredient", 2, weight=0.02),
+        "wyvern_feng_powder": Item("Wyvern Feng Powder", "ingredient", 2, weight=0.02),
+        "hearts_ember_sap": Item("Hearts Ember Sap", "ingredient", 2, weight=0.02),
+        "silverwind_fern_fronds": Item("Silverwind Fern Fronds", "ingredient", 2, weight=0.02),
+        "giant_spider_spinneret_silk": Item("Giant Spider Spinneret Silk", "ingredient", 2, weight=0.02),
+        "nightglass_berry_juice": Item("Nightglass Berry Juice", "ingredient", 2, weight=0.02),
+        "dust_of_mothwing": Item("Dust of Mothwing", "ingredient", 2, weight=0.02),
+        "sunblossom_nectar": Item("Sunblossom Nectar", "ingredient", 2, weight=0.02),
+        "powdered_basilisk_bone": Item("Powdered Basilik Bone", "ingredient", 2, weight=0.02),
+        "essence_of_troll_fat": Item("Essence of Troll Fat", "ingredient", 2, weight=0.02),
+        "greenheart_sap": Item("Greenheart Sap", "ingredient", 2, weight=0.02),
 
         # Unique
         "spirit_bracelet": Item("Bracelet of Zauz", "equipment", level, "light", 0.2, hp=2, mp=10, magatk=4, magdef=4, athletics=2, slot=["br"]),
-        "sacret_grimoire_sylvestris": Item("Sacret Grimoire Sylvesstris", "equipment", 2, None, 2, magatk=10, special=10, intimidation=2, slot=["rh", "lh"])
+        "spirit_grimoire_sylvestris": Item("Spirit Grimoire Sylvestris", "equipment", 2, None, 2, magatk=10, special=10, intimidation=2, slot=["rh", "lh"])
 
     }
-    item = items_list[item_name]
+    item = items_list.get(item_name)
     return item

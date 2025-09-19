@@ -201,16 +201,57 @@ class Spell_BeaconOfTheFox(Spell):
 
 class Spell_LuminousRebirth(Spell):
     def init(self, player: object, opponent: object, save: float, caster_m: float, opponent_m: float, barrier_m: float, dice: int, players: dict[str, object], game: object, spell_enchants: list[str]):
-        affinity = 1.25 if self.attribute in player.attribute else 1
-        maximize = 1.25 if "M" in spell_enchants else 1
-        effect: int = game.calc_effect(dice, self, 1, 1, 1, caster_m, affinity, maximize, save, 0)*0.01
+        effect: int = game.calc_effect(dice, self, 1, 1, 1, caster_m, (1.25 if self.attribute in player.attribute else 1), (1.25 if "M" in spell_enchants else 1), save, 0)*0.01
         opponent.new_hp = round(opponent.max_hp*effect)
         opponent.new_mp = round(opponent.max_mp*effect)
         gl.print_debugg("NOTE", f"{opponent.prefix} {opponent.firstname} revived with {opponent.new_hp} HP")
 
+class Spell_RootweaversGrasp(Spell):
+    def init(self, player: object, opponent: object, save: float, caster_m: float, opponent_m: float, barrier_m: float, dice: int, players: dict[str, object], game: object, spell_enchants: list[str]):
+        effect: int = game.calc_effect(dice, self, 1, 1, 1, caster_m, (1.25 if self.attribute in player.attribute else 1), (1.25 if "M" in spell_enchants else 1), save, 0)
+        if gl.is_resist(self, opponent, effect):
+            return
+        ally: object = fs.is_player_prefix(players, extra_text=" of ally")
+        ally.status_apply(ef.effect_list("rootweavers_grasp", 3, 1, package=[ally, opponent, "ally", players], spell_effect=effect), effect)
+        opponent.status_apply(ef.effect_list("rootweavers_grasp", 3, 1, package=[ally, opponent, "oppo", players], spell_effect=effect), effect)
+
+class Spell_StatusPromotion(Spell):
+    def init(self, player: object, opponent: object, save: float, caster_m: float, opponent_m: float, barrier_m: float, dice: int, players: dict[str, object], game: object, spell_enchants: list[str]):
+        if not opponent.status_effects:
+            return
+        effect: int = game.calc_effect(dice, self, 1, 1, 1, caster_m, (1.25 if self.attribute in player.attribute else 1), (1.25 if "M" in spell_enchants else 1), save, 0)
+        if gl.is_resist(self, opponent, effect):
+            return
+        player_effects = opponent.status_effects[:]
+        for status_effect in player_effects:
+            if not status_effect.ept or status_effect.effect_type!="debuff":
+                continue
+            for target in status_effect.ept_target:
+                opponent.attribute_add(target, round(status_effect.effect*status_effect.time_left), False, status_effect)
+            gl.print_debugg("note", f"{status_effect.name} exploded, dealing {round(status_effect.effect*status_effect.time_left)} damage to the target!")
+            status_effect.remove(opponent)
+            opponent.status_effects.remove(status_effect)
+
+class Spell_CondensePower(Spell):
+    def init(self, player: object, opponent: object, save: float, caster_m: float, opponent_m: float, barrier_m: float, dice: int, players: dict[str, object], game: object, spell_enchants: list[str]):
+        power: int = fs.is_int("Power of Condense Power [1-10]: ")
+        effect: int = game.calc_effect(dice, self, 1, 1, 1, caster_m, (1.25 if self.attribute in player.attribute else 1), (1.25 if "M" in spell_enchants else 1), save, 0)
+        opponent.attribute_add("hp", effect*power*0.1, True)
+
 def spell_list(spell_name):
     spells_list = {
-        #  SPELLS
+        # ABILITIES
+        "status_promotion": Spell_StatusPromotion("Status Promotion", "Debuff", 3, 50, 1, "magatk", ["Nature"], unique=True, cooldown=1),
+        "condense_power": Spell_CondensePower("Condense Power", "Magical", 5, -10, 1, "magatk", ["Nature", "Water"], unique=True, cooldown=2, note="Let the player roll first and then choose 'power'"),
+
+        # SPELLS
+        "earth_blast": Spell("Earth Blast", "Magical", 2, -4, 1, "magatk", ["Earth"], True),
+        "thunderlance": Spell("Thunderlance", "Magical", 3, -8, 2, "magatk", ["Thunder"], True, status=[ef.effect_list("shock", 2, 1, True), ef.effect_list("stun", 1, 0.3)]),
+        "greater_pact": Spell("Greater Pact", "Buff", 5, 5, 3, "magatk", ["Holy"], True, status=[ef.effect_list("increase_all_stats", 3, 1), ef.effect_list("increase_all_skills", 3, 1)], karma=-30, cooldown=3),
+        "doomed_prophecy": Spell("Doomed Prophecy", "Magical", 6, 5, 3, "magatk", ["Holy"], True, "AOE", status=[ef.effect_list("increase_all_stats", 3, 1, use_religion="Vorgoth"), ef.effect_list("increase_all_skills", 3, 1, use_religion="Vorgoth")], karma=-20),
+        "stone_wall": Spell("Stone Wall", "Obstacle", 3, 15, 3, "magatk", ["Earth"], True, obstacles=["stone_wall"]),
+
+        # Mage / Wizard
         "magic_arrow": Spell("Magic Arrow", "Magical", 1, -2, 1, "magatk", ["Mana"], True),
         "bunny_tail": Spell("Bunny Tail", "Buff", 1, 10, 2, "magatk", ["Illusion"], True, status=[ef.effect_list("bunny_tail", 2, 1)]),
         "luminous_light": Spell("Luminous Light", "Buff", 1, 10, 3, "magatk", ["Light"], True, status=[ef.effect_list("luminous_light", 3, 1)]),
@@ -218,46 +259,62 @@ def spell_list(spell_name):
         "acid_arrow": Spell("Acid Arrow", "Magical", 2, -4, 1, "magatk", ["Acid"], True, status=[ef.effect_list("corrosion", 2, 1)]),
         "hawk_eye": Spell("Hawk Eye", "Buff", 2, 10, 3, "magatk", ["Mana"], True, status=[ef.effect_list("hawk_eye", 3, 1)]),
         "water_stream": Spell("Water Stream", "Magical", 2, -4, 1, "magatk", ["Water"], True, status=[ef.effect_list("wet", 1, 1)]),
-        "fireball": Spell("Fireball", "Magical", 3, -6, 2, "magatk", ["Fire"], True, status=[ef.effect_list("ignite", 2, 1)]),
-        "light_healing": Spell("Light Healing", "Magical", 3, 6, 1, "magatk", ["Twilight"], True),
-        "earth_blast": Spell("Earth Blast", "Magical", 2, -4, 1, "magatk", ["Earth"], True),
-        "thunderlance": Spell("Thunderlance", "Magical", 3, -8, 2, "magatk", ["Thunder"], True, status=[ef.effect_list("shock", 2, 1, True), ef.effect_list("stun", 1, 0.3)]),
-        "greater_pact": Spell("Greater Pact", "Buff", 5, 5, 3, "magatk", ["Holy"], True, status=[ef.effect_list("increase_all_stats", 3, 1), ef.effect_list("increase_all_skills", 3, 1)], karma=-30, cooldown=3),
-        "doomed_prophecy": Spell("Doomed Prophecy", "Magical", 6, 5, 3, "magatk", ["Holy"], True, "AOE", status=[ef.effect_list("increase_all_stats", 3, 1, use_religion="Vorgoth"), ef.effect_list("increase_all_skills", 3, 1, use_religion="Vorgoth")], karma=-20),
+        "ice_spike": Spell("Ice Spike", "Magical", 2, -4, 1, "magatk", ["Ice"], True, status=[ef.effect_list("chilled", 1, 1)]),
+        "flash": Spell("Flash", "Debuff", 2, 25, 1, "magatk", ["Light"], True, status=[ef.effect_list("blinded", 1, 1)], undead_b=True, cooldown=1),
+        "flame": Spell("Flame", "Magical", 2, -4, 1, "magatk", ["Fire", "Flame"], True, status=[ef.effect_list("ignite", 1, 0.8)]),
         "glimmering_shield": Spell("Glimmering Shield", "Barrier", 3, 10, 3, "magatk", ["Mana"], True, status=[ef.effect_list("glimmering_shield", 3, 1)], is_max=True),
-        "stone_wall": Spell("Stone Wall", "Obstacle", 3, 15, 3, "magatk", ["Earth"], True, obstacles=["stone_wall"]),
-        
-        # Light Magic"
+        "fireball": Spell("Fireball", "Magical", 3, -6, 2, "magatk", ["Fire", "Flame"], True, status=[ef.effect_list("ignite", 2, 1, True)], cooldown=3),
+        "light_healing": Spell("Light Healing", "Magical", 3, 6, 1, "magatk", ["Twilight"], True, heal_tag=["alive"]),
+
+
+        # Light Magic
         "foxfire_touch": Spell("Foxfire Touch", "Buff", 1, 4, 3, "magatk", ["Light"], True, status=[ef.effect_list("foxfire_touch", 3, 1)]),
         "glimmer_dart": Spell("Glimmer Dart", "Magical", 1, -2, 1, "magatk", ["Light"], True, undead_b=True),
         "illuminated_path": Spell("Illuminated Path", "Buff", 1, 10, 1, "magatk", ["Light"], True, status=[ef.effect_list("illuminated_path", 2, 1)], effect_is="Range", floor=["illuminated_path"]),
-        "spiritveil": Spell("Spiritveil", "Buff", 2, 10, 3, "magatk", ["Light"], True, status=[ef.effect_list("spiritveil", 2, 1, True)], effect_is="Stealth"),
+        "spiritveil": Spell("Spiritveil", "Buff", 2, 10, 3, "magatk", ["Light"], True, status=[ef.effect_list("spiritveil", 2, 1, True)], effect_is="Stealth", cooldown=2),
         "sunburst_step": Spell("Sunburst Step", "Magical", 2, -4, 1, "magatk", ["Light"], True),
-        "blinding_light": Spell("Blinding Light", "Debuff", 2, 20, 1, ["Light"], "magatk", True, status=[ef.effect_list("blinded", 1, 1)]),
-        "foxfire_pack": Spell("Foxfire Pack", "Buff", 3, 2, 2, "magatk", ["Light"], True, status=[ef.effect_list("foxfire_pack", 2, 1, True)], effect_is="Save"),
-        "blinding_flare": Spell("Blinding Flare", "Magical", 3, -5, 1, "magatk", ["Light"], True, status=[ef.effect_list("blinded", 1, 0.3)]),
-        "spirit_reversal": Spell("Spirit Reversal", "Magical", 4, 10, 1, "magatk", ["Light"], True, status=[ef.effect_list("spirit_reversal", 3, 1, True)]),
-        "cleansing_light": Spell_CleansingLight("Cleansing Light", "Magical", 4, -6, 1, "magatk", ["Light"], True, undead_b=True, status=[ef.effect_list("cleansing_light", 1, 1)], unique=True),
-        "flash_step": Spell("Flash Step", "Buff", 4, 10, 1, "magatk", ["Light"], True, effect_is="Range"),
-        "vulpine_mirror": Spell("Vulpine Mirror", "Buff", 5, 25, 3, "magatk", ["Light"], True, status=[ef.effect_list("vulpine_mirror", 3, 1, True)]),
-        "solar_bloom": Spell("Solar Bloom", "Magical", 5, -8, 2, "magatk", ["Light"], True, status=[ef.effect_list("ignite", 2, 1, True)]),
-        "halo_of_the_tamer": Spell_HaloOfTheTamer("Halo of The Tamer", "Buff", 5, 3, 1, "magatk", ["Light"], True, unique=True),
-        "sanctified_ground": Spell("Sanctified Ground", "Buff", 6, 4, 2, "magatk", ["Light"], True, status=[ef.effect_list("sanctified_ground", 2, 1, True, heal_tag=["alive"]), ef.effect_list("charm_immunity", 2, 1)], floor=["sanctified_ground"]),
-        "beacon_of_the_fox": Spell_BeaconOfTheFox("Beacon of The Fox", "Summon", 6, 3, 1, "magatk", ["Light"], True, unique=True, note="Opponent is the spirit of which the spell copies stats."),
-        "nova_fang": Spell("Nova Fang", "Magical", 6, -10, 1, "magatk", ["Light"], True, enchant="pierce"),
-        "astral_tailwind": Spell("Astral Tailwind", "Buff", 7, 4, 3, "magatk", ["Light"], True, status=[ef.effect_list("astral_tailwind", 3, 1, True), ef.effect_list("light_magic_immunity", 3, 1)], effect_is="Range"),
-        "soul_link": Spell("Soul Link", "Buff", 7, 8, 3, "magatk", ["Light"], True, status=[ef.effect_list("soul_link", 3, 1)], effect_is="Range", note="Opponent should be both the caster and the target."),
-        "radiant_silence": Spell("Radiant Silence", "Debuff", 7, 70, 1, "magatk", ["Light"], True, status=[ef.effect_list("blinded", 1, 1), ef.effect_list("silenced", 1, 1)]),
-        "solar_cage": Spell("Solar Cage", "Debuff", 8, 60, 1, "magatk", ["Light"], True, status=[ef.effect_list("solar_cage", 1, 1), ef.effect_list("encumbered", 1, 1)]),
-        "luminous_rebirth": Spell_LuminousRebirth("Luminous Rebirth", "Buff", 8, 50, 1, "magatk", ["Light"], True, status=[ef.effect_list("luminous_rebirth", 1, 1)], unique=True),
-        "firefox": Spell("Firefox", "Magical", 8, -14, 1, "magatk", ["Light"], True, status=[ef.effect_list("ignite", 1, 1, True)], floor=["fire"]),
-        "fox_of_the_zenith": Spell_FoxOfTheZenith("Fox of The Zenith", "Buff", 9, 4, 4, "magatk", ["Light"], True, status=[ef.effect_list("fox_of_the_zenith", 4, 1), ef.effect_list("increase_all_stats", 3, 1, True)], unique=True),
+        "blinding_light": Spell("Blinding Light", "Debuff", 2, 20, 1, ["Light"], "magatk", True, status=[ef.effect_list("blinded", 1, 1)], cooldown=1),
+        "foxfire_pack": Spell("Foxfire Pack", "Buff", 3, 2, 2, "magatk", ["Light"], True, status=[ef.effect_list("foxfire_pack", 2, 1, True)], effect_is="Save", cooldown=3),
+        "blinding_flare": Spell("Blinding Flare", "Magical", 3, -5, 1, "magatk", ["Light"], True, status=[ef.effect_list("blinded", 1, 0.3)], cooldown=1),
+        "spirit_reversal": Spell("Spirit Reversal", "Magical", 4, 10, 1, "magatk", ["Light"], True, status=[ef.effect_list("spirit_reversal", 3, 1, True)], cooldown=8),
+        "cleansing_light": Spell_CleansingLight("Cleansing Light", "Magical", 4, -6, 1, "magatk", ["Light"], True, undead_b=True, status=[ef.effect_list("cleansing_light", 1, 1)], unique=True, cooldown=5),
+        "flash_step": Spell("Flash Step", "Buff", 4, 10, 1, "magatk", ["Light"], True, effect_is="Range", cooldown=2),
+        "vulpine_mirror": Spell("Vulpine Mirror", "Buff", 5, 25, 3, "magatk", ["Light"], True, status=[ef.effect_list("vulpine_mirror", 3, 1, True)], cooldown=3),
+        "solar_bloom": Spell("Solar Bloom", "Magical", 5, -8, 2, "magatk", ["Light"], True, status=[ef.effect_list("ignite", 2, 1, True)], cooldown=2),
+        "halo_of_the_tamer": Spell_HaloOfTheTamer("Halo of The Tamer", "Buff", 5, 3, 1, "magatk", ["Light"], True, unique=True, cooldown=2),
+        "sanctified_ground": Spell("Sanctified Ground", "Buff", 6, 4, 2, "magatk", ["Light"], True, status=[ef.effect_list("sanctified_ground", 2, 1, True, heal_tag=["alive"]), ef.effect_list("charm_immunity", 2, 1)], floor=["sanctified_ground"], cooldown=5),
+        "beacon_of_the_fox": Spell_BeaconOfTheFox("Beacon of The Fox", "Summon", 6, 3, 1, "magatk", ["Light"], True, unique=True, note="Opponent is the spirit of which the spell copies stats.", cooldown=4),
+        "nova_fang": Spell("Nova Fang", "Magical", 6, -10, 1, "magatk", ["Light"], True, enchant="pierce", cooldown=2),
+        "astral_tailwind": Spell("Astral Tailwind", "Buff", 7, 4, 3, "magatk", ["Light"], True, status=[ef.effect_list("astral_tailwind", 3, 1, True), ef.effect_list("light_magic_immunity", 3, 1)], effect_is="Range", cooldown=5),
+        "soul_link": Spell("Soul Link", "Buff", 7, 8, 3, "magatk", ["Light"], True, status=[ef.effect_list("soul_link", 3, 1)], effect_is="Range", note="Opponent should be both the caster and the target.", cooldown=5),
+        "radiant_silence": Spell("Radiant Silence", "Debuff", 7, 70, 1, "magatk", ["Light"], True, status=[ef.effect_list("blinded", 1, 1), ef.effect_list("silenced", 1, 1)], cooldown=3),
+        "solar_cage": Spell("Solar Cage", "Debuff", 8, 60, 1, "magatk", ["Light"], True, status=[ef.effect_list("solar_cage", 1, 1), ef.effect_list("encumbered", 1, 1)], cooldown=4),
+        "luminous_rebirth": Spell_LuminousRebirth("Luminous Rebirth", "Buff", 8, 50, 1, "magatk", ["Light"], True, status=[ef.effect_list("luminous_rebirth", 1, 1)], unique=True, cooldown=10),
+        "firefox": Spell("Firefox", "Magical", 8, -14, 1, "magatk", ["Light"], True, status=[ef.effect_list("ignite", 1, 1, True)], floor=["fire"], cooldown=3),
+        "fox_of_the_zenith": Spell_FoxOfTheZenith("Fox of The Zenith", "Buff", 9, 4, 4, "magatk", ["Light"], True, status=[ef.effect_list("fox_of_the_zenith", 4, 1), ef.effect_list("increase_all_stats", 3, 1, True)], unique=True, cooldown=8),
         "light_beam": Spell("Light Beam", "Magical", 6, -10, 1, "magatk", ["Light"], True),
-        "starlit_benediction": Spell_StarlitBenediction("Starlit Benediction", "Buff", 9, 16, 1, "magatk", ["Light"], True, unique=True),
-        "prismatic_tailstorm": Spell("prismatic_tailstorm", "Magical", 9, -16, 1, "magatk", ["Light"], True, undead_b=True),
-        "light_eternal": Spell("Light Eternal", "Buff", 10, 10, 2, "magatk", ["Light"], True, status=[ef.effect_list("light_eternal", 2, 1)], effect_is="Range", floor=["light_eternal"]),
-        "sundering_radiance": Spell_SunderingRadiance("Sundering Radiance", "Magical", 10, -18, 1, "magatk", ["Light"], True, undead_b=True, unique=True),
-        "spirit_ascendant": Spell("Spirit Ascendant", "Buff", 10, 10, 1, "magatk", ["Light"], True, status=[ef.effect_list("spirit_ascendant", 3, 1), ef.effect_list("flight", 3, 1), ef.effect_list("increase_all_stats", 3, 1, True, ceff=2), ef.effect_list("increase_all_skills", 3, 1, True)])
+        "starlit_benediction": Spell_StarlitBenediction("Starlit Benediction", "Buff", 9, 16, 1, "magatk", ["Light"], True, unique=True, cooldown=6),
+        "prismatic_tailstorm": Spell("prismatic_tailstorm", "Magical", 9, -16, 1, "magatk", ["Light"], True, undead_b=True, cooldown=5),
+        "light_eternal": Spell("Light Eternal", "Buff", 10, 10, 2, "magatk", ["Light"], True, status=[ef.effect_list("light_eternal", 2, 1)], effect_is="Range", floor=["light_eternal"], cooldown=10),
+        "sundering_radiance": Spell_SunderingRadiance("Sundering Radiance", "Magical", 10, -18, 1, "magatk", ["Light"], True, undead_b=True, unique=True, cooldown=7),
+        "spirit_ascendant": Spell("Spirit Ascendant", "Buff", 10, 10, 1, "magatk", ["Light"], True, status=[ef.effect_list("spirit_ascendant", 3, 1), ef.effect_list("flight", 3, 1), ef.effect_list("increase_all_stats", 3, 1, True, ceff=2), ef.effect_list("increase_all_skills", 3, 1, True)], cooldown=7),
+
+        # Nature magic
+        "vine_whip": Spell("Vine Whip", "Magical", 1, -2, 1, "magatk", ["Nature"], True, status=[ef.effect_list("bleeding", 1, 0.2, True)]),
+        "spore_puff": Spell("Spore Puff", "Debuff", 1, 10, 2, "magatk", ["Nature"], True),
+        "thorn_needle": Spell("Thorn Needle", "Magical", 1, -2, 1, "magatk", ["Nature"], True, enchant="pierce", status=[ef.effect_list("bleeding", 1, 0.4, True)], cooldown=1),
+        "tanglefield": Spell("Tanglefield", "Magical", 2, -2, 2, "magatk", ["Nature"], True, floor=["tanglefield"], cooldown=2),
+        "creeping_rot": Spell("Creeping Rot", "Debuff", 2, 10, 1, "magatk", ["Nature", "Death"], True, status=[ef.effect_list("decay", 1, 1)]),
+        "seedling_ward": Spell("Seedling Ward", "Magical", 2, 2, 1, "magatk", ["Nature", "Twilight"], True, heal_tag=["alive"]),
+        "thornshard_volley": Spell("Thornshard Volley", "Magical", 3, -4, 1, "magatk", ["Nature"], True),
+        "photosynthesis": Spell("Photosynthesis", "Buff", 3, 2, 5, "magatk", ["Nature"], True, status=[ef.effect_list("photosynthesis", 5, 1, True)]),
+        "fleshrot_vine": Spell("Fleshrot Vine", "Debuff", 3, 30, 2, "magatK", ["Nature"], True, status=[ef.effect_list("fleshrot_vine", 2, 1, True)]),
+        "barkskin_curse": Spell("Barkskin Curse", "Debuff", 4, 40, 2, "magatk", ["Nature"], True, status=[ef.effect_list("barkskin_curse", 2, 1, True)]),
+        "exploding_briar": Spell("Exploding Briar", "Magical", 4, -5, 1, "magatk", ["Nature"], True, status=[ef.effect_list("bleeding", 1, 1, True)]),
+        "circle_of_renewal": Spell("Circle of Renewal", "Buff", 4, 2, 2, "magatk", ["Nature"], True, status=[ef.effect_list("circle_of_renewal", 2, 1, True)], floor=["circle_of_renewal"]),
+        "virulent_bloom": Spell("Virulent Bloom", "Debuff", 5, 50, 2, "magatk", ["Nature", "Poison"], True, status=[ef.effect_list("poisoned", 2, 1, True, heal_tag=["undead"])]),
+        "thornquake": Spell("Thornquake", "Magical", 5, -6, 1, "magatk", ["Nature"], True, enchant="pierce"),
+        "rootweaver": Spell_RootweaversGrasp("Rootweaver's Grasp", "Debuff", 5, 30, 3, "magatk", ["Nature"], True, unique=True, note="Opponent prefix is Opponent, ally will be chosen later")
     }
     spell: object = spells_list.get(spell_name)
     if spell is None:

@@ -91,6 +91,8 @@ def race_list(race_name: str, level: int) -> object:
         "goblin": Race("Goblin", "demi-human", level, power_level=20, hp=2, sp=1, phyatk=1, phydef=1, agility=1, finess=1, magdef=1, magatk=1, resistance=1, special=1, sleight=1, perception=1),
         "goblin_lord": Race("Goblin Lord", "demi-human", level, power_level=40, hp=2, mp=1, sp=1, phyatk=1, phydef=1, agility=2, athletics=1, acrobatics=1, stealth=1, sleight=1, perception=1),
         "goblin_strategist": Race("Goblin Strategist", "demi-human", level, power_level=100, hp=2, mp=3, sp=3, phydef=1, magdef=1, special=2, persuasion=2, perception=2),
+        "merman": Race("Merman", "demi-human", level, power_level=20, hp=2, mp=1, sp=1, agility=2, phyatk=1, phydef=1, magatk=1, magdef=1, finess=1, resistance=1, special=1, acrobatics=1, intimidation=1, perception=1),
+        "merman_lord": Race("Merman Lord", "demi-human", level, power_level=40, hp=1, mp=2, sp=1, agility=1, phyatk=1, phydef=1, magdef=1, finess=1, resistance=1, special=1, acrobatics=2, intimidation=2, perception=1),
 
         # Heteromorph
         "spirit": Race("Spirit", "heteromorph", level, power_level=30, hp=2, mp=2, sp=1, phyatk=1, phydef=1, agility=2, finess=1, magatk=2, magdef=2, resistance=2, special=2, performance=2, stealth=2),

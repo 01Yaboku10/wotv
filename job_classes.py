@@ -70,6 +70,7 @@ def job_list(job_name, level):
         "wizard": Job("Wizard", "magic", level, 30, "light", mp=1, magatk=1, magdef=1, investigation=1),
         "greater_wizard": Job("Greater Wizard", "magic", level, 50, "light", mp=1, magatk=1, magdef=1, investigation=1),
         "master_wizard": Job("Master Wizard", "magic", level, 125, "light", mp=1, magatk=1, magdef=1, investigation=1),
+        "mage": Job("Mage", "magic", level, 30, "light", mp=1, magatk=1, magdef=1, investigation=1),
         "elemental_mage": Job("Elemental Mage", "magic", level, 30, mp=3, magatk=1, magdef=1, investigation=1),
         "spirit_tamer": Job("Spirit Tamer", "magic", level, 30, mp=2, resistance=-5, insight=2, performance=2),
         "greater_spirit_tamer": Job("Greater Spirit Tamer", "magic", level, 60, mp=2, resistance=-5, insight=2, performance=1),
@@ -82,11 +83,13 @@ def job_list(job_name, level):
         "knight": Job("Knight", "warrior", level, 25, "medium", sp= 1, phydef=1, phyatk=1, agility=1, athletics=1, perception=1),
         "greater_knight": Job("Greater Knight", "warrior", level, 50, "medium", phydef=1, sp= 1, phyatk=1, agility=1, athletics=1, perception=1),
         "master_knight": Job("Master Knight", "warrior", level, 125, "medium", phydef=1, sp= 1, phyatk=1, agility=1, athletics=1, perception=1),
-        "tank": Job("Tank", "warrior", level, 40, "heavy", phydef=1, sp= 1, phyatk=1, athletics=1, perception=1)
+        "tank": Job("Tank", "warrior", level, 40, "heavy", phydef=1, sp= 1, phyatk=1, athletics=1, perception=1),
 
         # Commander
 
         # Production
+        "alchemist": Job("Alchemist", "magic", level, 20, finess=15, investigation=3, insight=2),
+        "greater_alchemist": Job("Greater Alchemist", "magic", level, 40, finess=10, investigation=2, insight=1)
     }
     job_class = job_class_list[job_name]
     return job_class

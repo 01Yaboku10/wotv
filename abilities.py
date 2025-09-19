@@ -113,6 +113,10 @@ class Ability():
 
 def ability_list(ability: str) -> object:
     abilites = {
-        "mob_muscle": Ability("Mob Muscle", surrounding_amount=1, surrounding_boost=1.05, is_max=True, is_per=True, use_self=True, hp=1, mp=1, sp=1, phyatk=1, phydef=1, agility=1, finess=1, magatk=1, magdef=1, resistance=1, special=1, athletics=1, acrobatics=1, stealth=1, sleight=1, investigation=1, insight=1, perception=1, deception=1, intimidation=1, persuasion=1, performance=1)
+        # Goblin
+        "mob_muscle": Ability("Mob Muscle", surrounding_amount=1, surrounding_boost=1.05, is_max=True, is_per=True, use_self=True, hp=1, mp=1, sp=1, phyatk=1, phydef=1, agility=1, finess=1, magatk=1, magdef=1, resistance=1, special=1, athletics=1, acrobatics=1, stealth=1, sleight=1, investigation=1, insight=1, perception=1, deception=1, intimidation=1, persuasion=1, performance=1),
+        
+        # Fairy King
+        "disaster": Ability("Disaster")
     }
     return abilites[ability]

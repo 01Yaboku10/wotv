@@ -1,6 +1,5 @@
 Create more abilites
 
-Create chest/bag system to quickly pick up and leave loot.
-perhaps make a global system where a bag is an object with an inventory?
 
-Add so that bags/chests are saved to the scenario
+
+Make the debuff save thingy a function so we can use it in unique spells.
